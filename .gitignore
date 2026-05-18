@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+data/raw/*
+data/interim/*
+data/processed/*
+!data/**/README.md
+models/*
+!models/README.md
+logs/*
+*.pt
+*.bin
+*.safetensors
+node_modules/
+frontend/dist/

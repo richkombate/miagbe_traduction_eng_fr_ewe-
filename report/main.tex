@@ -1,0 +1,44 @@
+\documentclass[12pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+\title{Projet de Traducteur Multilingue Français--Anglais--Ewe avec Reconnaissance Vocale}
+\author{Jean Nestor AZIGLOSSOU}
+\date{2026}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+Ce projet présente la conception d'un système de traduction automatique multilingue couvrant le français, l'anglais et l'ewe, avec une extension vocale. L'approche proposée s'appuie sur les modèles Transformer multilingues, en particulier NLLB-200, et tient compte des contraintes propres aux langues africaines à faibles ressources.
+
+\chapter{Introduction}
+La traduction automatique constitue un enjeu majeur d'inclusion numérique. L'ewe, langue parlée au Togo et au Ghana, reste peu représentée dans les grands corpus numériques. Ce travail propose une architecture réaliste associant collecte de données, nettoyage NLP, fine-tuning, API et interface utilisateur.
+
+\chapter{Méthodologie}
+La méthodologie comprend la collecte de corpus parallèles, la normalisation Unicode, le fine-tuning d'un modèle NLLB-200 distilled 600M avec LoRA, et l'évaluation par BLEU, chrF, WER et CER.
+
+\chapter{Architecture du système}
+Le système est constitué d'un frontend React, d'une API FastAPI, d'un module de traduction et de modules vocaux STT/TTS.
+
+\chapter{Résultats attendus et discussion}
+Les résultats seront comparés au modèle NLLB en zéro-shot et, lorsque possible, à des traductions externes. Les limites majeures concernent la disponibilité des données ewe et la qualité des corpus alignés.
+
+\chapter{Conclusion}
+Le projet constitue une base crédible pour explorer la traduction automatique des langues africaines à faibles ressources dans un contexte universitaire.
+
+\bibliographystyle{plain}
+\begin{thebibliography}{9}
+\bibitem{nllb} Meta AI. No Language Left Behind: Scaling Human-Centered Machine Translation. 2022.
+\bibitem{lora} Hu et al. LoRA: Low-Rank Adaptation of Large Language Models. 2021.
+\bibitem{sennrich} Sennrich et al. Improving Neural Machine Translation Models with Monolingual Data. 2016.
+\end{thebibliography}
+\end{document}
