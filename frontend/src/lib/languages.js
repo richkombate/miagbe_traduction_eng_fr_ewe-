@@ -1,7 +1,7 @@
 export const LANGUAGES = [
-  { code: 'fra', label: 'Francais', nllb: 'fra_Latn', tone: '#1a73e8' },
-  { code: 'eng', label: 'Anglais', nllb: 'eng_Latn', tone: '#188038' },
-  { code: 'ewe', label: 'Ewe', nllb: 'ewe_Latn', tone: '#b06000' },
+  { code: 'fra', label: 'Fran\u00e7ais', tone: '#d21034' },
+  { code: 'eng', label: 'Anglais', tone: '#006a4e' },
+  { code: 'ewe', label: 'Ewe', tone: '#b38600' },
 ];
 
 export function getLanguageLabel(code) {

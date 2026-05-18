@@ -14,7 +14,7 @@ export function useGoogleAuth(buttonRef) {
       storeUser(profile);
       setUser(profile);
       setAuthStatus('');
-    }).catch((error) => setAuthStatus(error.message));
+    }).catch(() => setAuthStatus('guest'));
   }, [buttonRef, user]);
 
   function signOut() {

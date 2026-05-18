@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HistoryPanel } from './components/HistoryPanel';
 import { LanguageSelector } from './components/LanguageSelector';
-import { ModelStatus } from './components/ModelStatus';
 import { TopBar } from './components/TopBar';
 import { TranslatorWorkspace } from './components/TranslatorWorkspace';
 import { useTranslationHistory } from './hooks/useTranslationHistory';
-import { getHealth, translateText } from './lib/api';
+import { translateText } from './lib/api';
 import { makeId } from './lib/storage';
 import './style.css';
 
@@ -16,61 +15,102 @@ function App() {
   const [target, setTarget] = useState('ewe');
   const [text, setText] = useState('Je vais bien.');
   const [result, setResult] = useState('');
-  const [backend, setBackend] = useState('');
-  const [health, setHealth] = useState(null);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeHistoryTab, setActiveHistoryTab] = useState('history');
+  const liveRequestRef = useRef(0);
 
   const { history, saved, addEntry, toggleFavorite, removeEntry, clearHistory } = useTranslationHistory(user);
-
-  useEffect(() => {
-    getHealth()
-      .then((data) => {
-        setHealth(data);
-        setBackend(data.backend);
-      })
-      .catch(() => {
-        setStatus('API indisponible');
-      });
-  }, []);
 
   const currentSavedEntry = useMemo(
     () => history.find((item) => item.sourceText === text && item.translatedText === result && item.source === source && item.target === target),
     [history, result, source, target, text],
   );
 
-  async function handleTranslate() {
-    if (!text.trim()) return;
+  function buildHistoryEntry(sourceText, translatedText, favorite = false) {
+    return {
+      id: makeId(),
+      sourceText,
+      translatedText,
+      source,
+      target,
+      favorite,
+      createdAt: new Date().toISOString(),
+    };
+  }
 
+  async function runTranslation({ persist = false } = {}) {
+    const sourceText = text.trim();
+    if (!sourceText) {
+      setResult('');
+      setStatus('');
+      return;
+    }
+
+    const requestId = liveRequestRef.current + 1;
+    liveRequestRef.current = requestId;
     setLoading(true);
-    setStatus('');
+    if (persist) setStatus('');
+
     try {
-      const data = await translateText({ text: text.trim(), source, target });
+      const data = await translateText({ text: sourceText, source, target });
+      if (requestId !== liveRequestRef.current) return;
+
       const translatedText = data.translated_text || '';
       setResult(translatedText);
-      setStatus(data.warning || '');
 
-      if (user) {
-        addEntry({
-          id: makeId(),
-          sourceText: data.source_text || text.trim(),
-          translatedText,
-          source,
-          target,
-          backend: data.backend,
-          favorite: false,
-          createdAt: new Date().toISOString(),
-        });
-      } else {
-        setStatus('Connectez-vous avec Google pour garder l historique.');
+      if (persist) {
+        if (user) {
+          addEntry(buildHistoryEntry(data.source_text || sourceText, translatedText));
+        } else {
+          setStatus('Connectez-vous pour conserver cette traduction.');
+        }
       }
-    } catch (error) {
-      setStatus(error.message || 'Erreur de traduction');
+    } catch {
+      if (requestId === liveRequestRef.current) {
+        setStatus("La traduction n'a pas pu aboutir. R\u00e9essayez dans un instant.");
+      }
     } finally {
-      setLoading(false);
+      if (requestId === liveRequestRef.current) {
+        setLoading(false);
+      }
     }
   }
+
+  useEffect(() => {
+    const sourceText = text.trim();
+    const requestId = liveRequestRef.current + 1;
+    liveRequestRef.current = requestId;
+
+    if (!sourceText) {
+      setResult('');
+      setStatus('');
+      setLoading(false);
+      return undefined;
+    }
+
+    const timer = window.setTimeout(async () => {
+      if (requestId !== liveRequestRef.current) return;
+      setLoading(true);
+      setStatus('');
+
+      try {
+        const data = await translateText({ text: sourceText, source, target });
+        if (requestId !== liveRequestRef.current) return;
+        setResult(data.translated_text || '');
+      } catch {
+        if (requestId === liveRequestRef.current) {
+          setStatus("La traduction n'a pas pu aboutir. R\u00e9essayez dans un instant.");
+        }
+      } finally {
+        if (requestId === liveRequestRef.current) {
+          setLoading(false);
+        }
+      }
+    }, 650);
+
+    return () => window.clearTimeout(timer);
+  }, [source, target, text]);
 
   function handleSwap() {
     setSource(target);
@@ -89,18 +129,28 @@ function App() {
   async function handleCopy() {
     if (!result) return;
     await navigator.clipboard.writeText(result);
-    setStatus('Traduction copiee');
+    setStatus('Traduction copi\u00e9e.');
   }
 
   function handleToggleSaved() {
-    if (!currentSavedEntry) return;
-    toggleFavorite(currentSavedEntry.id);
+    if (!result) return;
+    if (!user) {
+      setStatus('Connectez-vous pour enregistrer cette traduction.');
+      return;
+    }
+
+    if (currentSavedEntry) {
+      toggleFavorite(currentSavedEntry.id);
+      return;
+    }
+
+    addEntry(buildHistoryEntry(text.trim(), result, true));
+    setStatus('Traduction enregistr\u00e9e.');
   }
 
   return (
     <main className="app-shell">
-      <TopBar backend={backend} onUserChange={setUser} />
-      <ModelStatus health={health} />
+      <TopBar onUserChange={setUser} />
 
       <section className="workspace">
         <div className="translation-column">
@@ -120,10 +170,11 @@ function App() {
             saved={currentSavedEntry?.favorite}
             status={status}
             onTextChange={setText}
-            onTranslate={handleTranslate}
+            onTranslate={() => runTranslation({ persist: true })}
             onClear={() => {
               setText('');
               setResult('');
+              setStatus('');
             }}
             onCopy={handleCopy}
             onToggleSaved={handleToggleSaved}

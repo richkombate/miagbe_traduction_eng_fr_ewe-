@@ -31,15 +31,13 @@ export function TranslatorWorkspace({
         <textarea
           value={text}
           onChange={(event) => onTextChange(event.target.value)}
-          placeholder="Ecrire ou coller le texte a traduire"
+          placeholder={'\u00c9crire ou coller le texte \u00e0 traduire'}
           maxLength={2000}
           autoFocus
         />
 
         <div className="panel-footer">
-          <div className="tool-row">
-            <span className="language-footnote">{getLanguageLabel(source)}</span>
-          </div>
+          <span className="language-footnote">{getLanguageLabel(source)}</span>
           <span>{text.length}/2000</span>
         </div>
       </div>
@@ -57,27 +55,25 @@ export function TranslatorWorkspace({
           {loading ? (
             <span className="loading-line">
               <Loader2 className="spin" size={22} />
-              Traduction en cours
+              Traduction en cours...
             </span>
           ) : (
-            result || 'La traduction apparaitra ici.'
+            result || 'La traduction appara\u00eetra ici.'
           )}
         </div>
 
         <div className="panel-footer">
-          <div className="tool-row">
-            <button className="icon-button" type="button" onClick={onCopy} disabled={!result} aria-label="Copier">
-              <Copy size={19} />
-            </button>
-          </div>
-          <span>{result ? 'Pret' : 'En attente'}</span>
+          <button className="icon-button" type="button" onClick={onCopy} disabled={!result} aria-label="Copier">
+            <Copy size={19} />
+          </button>
+          <span>{loading ? 'En direct...' : result ? 'Automatique' : 'En attente'}</span>
         </div>
       </div>
 
       <div className="translate-command">
         <button className="primary-action" type="button" onClick={onTranslate} disabled={loading || !text.trim()}>
           {loading ? <Loader2 className="spin" size={19} /> : <SendHorizontal size={19} />}
-          {loading ? 'Traduction' : 'Traduire'}
+          {loading ? 'Traduction...' : 'Traduire'}
         </button>
         {status && <p>{status}</p>}
       </div>

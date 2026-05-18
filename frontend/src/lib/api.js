@@ -1,13 +1,5 @@
 import { API_URL } from './config';
 
-export async function getHealth() {
-  const response = await fetch(`${API_URL}/health`);
-  if (!response.ok) {
-    throw new Error('API indisponible');
-  }
-  return response.json();
-}
-
 export async function translateText({ text, source, target }) {
   const response = await fetch(`${API_URL}/translate`, {
     method: 'POST',
@@ -18,9 +10,8 @@ export async function translateText({ text, source, target }) {
       target_lang: target,
     }),
   });
-  const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.detail || 'Erreur de traduction');
+    throw new Error('translation_failed');
   }
-  return data;
+  return response.json();
 }

@@ -1,6 +1,6 @@
 import { Clock3, RotateCcw, Star, Trash2 } from 'lucide-react';
-import { formatHistoryDate } from '../lib/storage';
 import { getLanguageLabel } from '../lib/languages';
+import { formatHistoryDate } from '../lib/storage';
 
 export function HistoryPanel({
   user,
@@ -14,6 +14,8 @@ export function HistoryPanel({
   onClear,
 }) {
   const items = activeTab === 'saved' ? saved : history;
+  const title = activeTab === 'history' ? 'Traductions r\u00e9centes' : 'Traductions sauvegard\u00e9es';
+  const count = items.length <= 1 ? `${items.length} traduction` : `${items.length} traductions`;
 
   return (
     <aside className="side-panel">
@@ -30,8 +32,8 @@ export function HistoryPanel({
 
       <div className="side-heading">
         <div>
-          <strong>{activeTab === 'history' ? 'Traductions recentes' : 'Traductions sauvegardees'}</strong>
-          <span>{user ? `${items.length} element(s)` : 'Connexion Google requise'}</span>
+          <strong>{title}</strong>
+          <span>{user ? count : 'Disponible apr\u00e8s connexion'}</span>
         </div>
         {user && history.length > 0 && (
           <button className="icon-button compact danger" type="button" onClick={onClear} aria-label="Vider">
@@ -41,9 +43,9 @@ export function HistoryPanel({
       </div>
 
       {!user ? (
-        <p className="empty-state">Connectez-vous avec Google pour conserver vos traductions.</p>
+        <p className="empty-state">Connectez-vous pour retrouver vos traductions plus tard.</p>
       ) : items.length === 0 ? (
-        <p className="empty-state">{activeTab === 'history' ? 'Aucune traduction.' : 'Aucun favori.'}</p>
+        <p className="empty-state">{activeTab === 'history' ? 'Aucune traduction pour le moment.' : 'Aucun favori pour le moment.'}</p>
       ) : (
         <div className="history-list">
           {items.map((item) => (

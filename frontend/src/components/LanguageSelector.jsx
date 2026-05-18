@@ -12,8 +12,7 @@ function LanguageGroup({ value, onChange, label }) {
           onClick={() => onChange(language.code)}
           style={{ '--accent': language.tone }}
         >
-          <span>{language.label}</span>
-          <small>{language.nllb}</small>
+          {language.label}
         </button>
       ))}
     </div>

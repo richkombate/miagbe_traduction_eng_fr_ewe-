@@ -25,7 +25,7 @@ export function profileFromCredential(response) {
 
 export function renderGoogleButton(container, onCredential) {
   if (!GOOGLE_CLIENT_ID) {
-    return Promise.reject(new Error('Google non configure'));
+    return Promise.reject(new Error('guest'));
   }
 
   return new Promise((resolve, reject) => {
