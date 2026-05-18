@@ -1,15 +1,16 @@
 # Model Card
 
-## Modèle cible
+## Modele cible
 
 `facebook/nllb-200-distilled-600M` + adaptation LoRA.
 
-## Usage prévu
+## Usage prevu
 
-Traduction académique/démonstrative entre français, anglais et ewe.
+Traduction academique et demonstrative entre francais, anglais et ewe.
 
 ## Limites
 
-- Qualité dépendante du volume de données ewe.
+- Qualite dependante du volume et de la validation des donnees ewe.
 - Risque de biais de domaine.
-- Mauvaise gestion possible des tons et diacritiques si les données sont mal normalisées.
+- Les corpus religieux doivent rester exclus ou plafonnes pour eviter un style biblique.
+- Mauvaise gestion possible des tons et diacritiques si les donnees sont mal normalisees.

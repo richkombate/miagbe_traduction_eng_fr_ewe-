@@ -25,7 +25,12 @@ app.add_middleware(
 
 @lru_cache
 def get_translator():
-    return build_translator(settings.translation_backend, settings.model_name, settings.device)
+    return build_translator(
+        settings.translation_backend,
+        settings.model_name,
+        settings.device,
+        settings.adapter_path,
+    )
 
 
 @app.get("/")

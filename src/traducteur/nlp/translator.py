@@ -44,9 +44,10 @@ class NLLBTranslator:
     remplacer `model_name` par le dossier de votre checkpoint LoRA fusionné.
     """
 
-    def __init__(self, model_name: str, device: str = "cpu") -> None:
+    def __init__(self, model_name: str, device: str = "cpu", adapter_path: str | None = None) -> None:
         self.model_name = model_name
         self.device = device
+        self.adapter_path = adapter_path
         self._tokenizer = None
         self._model = None
 
@@ -58,8 +59,13 @@ class NLLBTranslator:
 
         self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self._model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name)
+        if self.adapter_path:
+            from peft import PeftModel
+
+            self._model = PeftModel.from_pretrained(self._model, self.adapter_path)
         if self.device == "cuda" and torch.cuda.is_available():
             self._model = self._model.to("cuda")
+        self._model.eval()
 
     def translate(self, text: str, source_lang: str, target_lang: str) -> TranslationResult:
         source_lang = validate_lang(source_lang)
@@ -84,7 +90,12 @@ class NLLBTranslator:
         return TranslationResult(cleaned, translated, source_lang, target_lang, "nllb")
 
 
-def build_translator(backend: str, model_name: str, device: str) -> Translator:
+def build_translator(
+    backend: str,
+    model_name: str,
+    device: str,
+    adapter_path: str | None = None,
+) -> Translator:
     if backend.lower() == "nllb":
-        return NLLBTranslator(model_name=model_name, device=device)
+        return NLLBTranslator(model_name=model_name, device=device, adapter_path=adapter_path)
     return FallbackTranslator()

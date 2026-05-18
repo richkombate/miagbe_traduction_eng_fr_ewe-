@@ -71,6 +71,7 @@ MODEL_NAME=facebook/nllb-200-distilled-600M
 DEVICE=cpu
 ENABLE_STT=false
 ENABLE_TTS=false
+ADAPTER_PATH=models/nllb-ewe-lora
 ```
 
 Valeurs possibles :

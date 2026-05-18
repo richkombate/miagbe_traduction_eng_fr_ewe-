@@ -68,6 +68,20 @@ python scripts/download_opus_parallel.py --source recommended
 
 Les fichiers CSV generes vont dans `data/processed/opus/`.
 
+Pour importer un echantillon filtre du corpus anglais-ewe Ghana NLP:
+
+```powershell
+python scripts/import_hf_parallel_dataset.py `
+  --dataset ghananlpcommunity/english-ewe-sentence-pairs-4m `
+  --src-column English `
+  --tgt-column Ewe `
+  --src-lang eng `
+  --tgt-lang ewe `
+  --min-quality 0.80 `
+  --max-rows 120000 `
+  --output data/processed/hf/ghana_en_ewe.csv
+```
+
 ## Controle qualite recommande
 
 1. Normaliser Unicode en NFC.
