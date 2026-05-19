@@ -1,110 +1,399 @@
-# Traducteur multilingue Français – Anglais – Ewe avec reconnaissance vocale
+# MiaGbe - Traducteur français, anglais et éwé
 
-Projet universitaire de Master : traduction automatique multilingue avec module vocal, centré sur une langue africaine peu dotée en ressources numériques : l'ewe.
+MiaGbe est une plateforme de traduction multilingue français, anglais et éwé,
+développée dans le cadre d'un projet universitaire togolais. Le projet combine :
 
-## Objectif
+- une API FastAPI pour la traduction ;
+- une interface React/Vite inspirée d'un outil de traduction moderne ;
+- un pipeline de données parallèles français/anglais/éwé ;
+- un notebook unique pour le fine-tuning LoRA de `facebook/nllb-200-distilled-600M` ;
+- une architecture prête pour l'authentification Google et l'historique utilisateur.
 
-Construire une démonstration complète capable de :
+Le projet peut tourner en mode démo léger avec un fallback local, ou en mode
+modèle NLLB/LoRA avec GPU NVIDIA.
 
-- traduire du texte entre français, anglais et ewe ;
-- exposer une API FastAPI propre ;
-- proposer une interface React/Vite ;
-- intégrer une architecture prête pour NLLB-200 + LoRA ;
-- préparer le pipeline STT/TTS ;
-- évaluer les traductions avec BLEU, chrF et WER/CER ;
-- fournir une base de rapport académique et de soutenance.
+## 1. Prérequis machine
 
-## Architecture retenue
+### Obligatoires
+
+- Python 3.10 ou plus récent, Python 3.11 recommandé.
+- Git.
+- Node.js LTS avec `npm` pour le frontend React.
+- Un terminal PowerShell sous Windows, ou un shell équivalent sous Linux/macOS.
+
+### Recommandés pour l'entraînement
+
+- GPU NVIDIA avec pilotes à jour.
+- PyTorch installé avec CUDA.
+- Au moins 8 Go de VRAM pour des essais LoRA modestes ; plus si le corpus est volumineux.
+
+Sur la machine de développement utilisée ici, la configuration GPU validée est :
 
 ```text
-Frontend React/Vite
-      |
-      v
-API FastAPI (/translate, /transcribe, /synthesize, /health)
-      |
-      +--> NLP: normalisation Unicode + moteur NLLB optionnel + fallback local
-      +--> Audio: STT/TTS optionnels
-      +--> Évaluation: BLEU, chrF, WER, CER
+torch: 2.11.0+cu128
+CUDA PyTorch: 12.8
+GPU: NVIDIA GeForce RTX 5080 Laptop GPU
 ```
 
-Le projet fonctionne en mode démonstration sans télécharger de gros modèles. Si un modèle Hugging Face est disponible localement, le backend peut basculer vers NLLB.
+Le NPU Intel AI Boost et le GPU Intel intégré peuvent apparaître dans le
+Gestionnaire des tâches Windows, mais l'entraînement PyTorch/Transformers de ce
+projet utilise le GPU NVIDIA via CUDA. Le NPU n'est pas exploité par ce pipeline.
 
-## Installation rapide
+## 2. Installation Python
 
-```bash
-cd traducteur-fr-en-ewe
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# Linux/Mac
-source .venv/bin/activate
+Depuis la racine du projet :
 
-pip install -r requirements.txt
-uvicorn traducteur.api.main:app --reload --app-dir src
+```powershell
+cd D:\python\traducteur-fr-en-ewe
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-API : <http://127.0.0.1:8000/docs>
+Si vous utilisez `uv`, vous pouvez remplacer la dernière commande par :
 
-## Lancer le frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
+```powershell
+uv pip install -r requirements.txt
 ```
 
-## Démonstration API
+### Installer PyTorch GPU
 
-```bash
-curl -X POST http://127.0.0.1:8000/translate \
-  -H "Content-Type: application/json" \
-  -d '{"text":"Bonjour mon ami", "source_lang":"fra", "target_lang":"eng"}'
+Si l'entraînement détecte le CPU au lieu du GPU, réinstallez PyTorch avec le
+wheel CUDA adapté à votre carte. Pour une machine CUDA 12.8 / RTX récente :
+
+```powershell
+python -m pip uninstall -y torch torchvision torchaudio
+python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 ```
 
-## Variables d'environnement utiles
+Pour une autre version CUDA, choisissez la commande officielle sur
+<https://pytorch.org/get-started/locally/>.
 
-Créez un fichier `.env` à la racine si nécessaire :
+Vérification :
+
+```powershell
+python -c "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.version.cuda); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+```
+
+Le résultat attendu pour entraîner sur GPU est :
+
+```text
+True
+NVIDIA ...
+```
+
+Si `torch.cuda.is_available()` vaut `False`, vérifiez le pilote NVIDIA, la
+version de PyTorch installée et le fait que l'environnement `.venv` actif est le
+bon.
+
+## 3. Configuration du backend
+
+Créez ou adaptez le fichier `.env` à la racine du projet :
 
 ```env
 TRANSLATION_BACKEND=fallback
 MODEL_NAME=facebook/nllb-200-distilled-600M
-DEVICE=cpu
+DEVICE=cuda
 ENABLE_STT=false
 ENABLE_TTS=false
 ADAPTER_PATH=models/nllb-ewe-lora
 ```
 
-Valeurs possibles :
+Modes utiles :
 
-- `TRANSLATION_BACKEND=fallback` : démonstration légère sans modèle ;
-- `TRANSLATION_BACKEND=nllb` : utilise Transformers si le modèle est installé/téléchargé ;
-- `DEVICE=cpu` ou `cuda`.
+- `TRANSLATION_BACKEND=fallback` : mode démo léger, sans charger NLLB.
+- `TRANSLATION_BACKEND=nllb` : charge le modèle NLLB avec Transformers.
+- `DEVICE=cpu` : compatible partout, mais lent pour NLLB.
+- `DEVICE=cuda` : utilise le GPU NVIDIA si PyTorch CUDA est disponible.
+- `ADAPTER_PATH=models/nllb-ewe-lora` : charge l'adapter LoRA final sauvegardé.
 
-## Structure
+Au premier lancement en mode `nllb`, Transformers peut télécharger le modèle
+depuis Hugging Face si le cache local ne le contient pas encore. Prévoyez une
+connexion Internet et de l'espace disque, ou remplacez `MODEL_NAME` par un
+chemin local contenant le modèle.
+
+Pour l'API d'inférence, utilisez de préférence le dossier final
+`models/nllb-ewe-lora`. Les sous-dossiers `checkpoint-*` servent surtout à
+reprendre l'entraînement ou tester un checkpoint précis.
+
+## 4. Lancer l'API FastAPI
+
+Lancez cette commande depuis la racine du projet :
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+uvicorn traducteur.api.main:app --reload --app-dir src
+```
+
+URLs utiles :
+
+- API : <http://127.0.0.1:8000>
+- Documentation Swagger : <http://127.0.0.1:8000/docs>
+- Santé du service : <http://127.0.0.1:8000/health>
+
+Test rapide :
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://127.0.0.1:8000/translate `
+  -ContentType "application/json" `
+  -Body '{"text":"Je vais bien.","source_lang":"fra","target_lang":"ewe"}'
+```
+
+Si vous êtes déjà dans le dossier `src`, lancez plutôt :
+
+```powershell
+uvicorn traducteur.api.main:app --reload
+```
+
+## 5. Lancer le frontend React
+
+Dans un second terminal :
+
+```powershell
+cd D:\python\traducteur-fr-en-ewe\frontend
+npm install
+npm run dev
+```
+
+Frontend : <http://127.0.0.1:5173>
+
+Le frontend appelle par défaut l'API sur `http://127.0.0.1:8000`. Si l'API est
+sur une autre adresse, créez `frontend/.env.local` :
+
+```env
+VITE_API_URL=http://127.0.0.1:8000
+```
+
+Pour vérifier la compilation frontend :
+
+```powershell
+npm run build
+```
+
+Si `npm` n'est pas reconnu sous Windows, installez Node.js LTS, fermez puis
+rouvrez PowerShell, puis vérifiez :
+
+```powershell
+node -v
+npm -v
+```
+
+## 6. Connexion Google
+
+L'interface prévoit une connexion Google pour associer l'historique et les
+favoris à l'utilisateur. Tant que Google n'est pas configuré, le bouton visible
+sert de point d'entrée mais ne connecte pas encore un vrai compte.
+
+Pour l'activer :
+
+1. Créez un projet dans Google Cloud Console.
+2. Configurez un client OAuth 2.0 de type application Web.
+3. Ajoutez les origines JavaScript autorisées :
+   - `http://localhost:5173`
+   - `http://127.0.0.1:5173`
+4. Créez `frontend/.env.local` :
+
+```env
+VITE_GOOGLE_CLIENT_ID=votre-client-id.apps.googleusercontent.com
+VITE_API_URL=http://127.0.0.1:8000
+```
+
+5. Redémarrez `npm run dev`.
+
+L'historique actuel est stocké localement dans le navigateur. Pour un vrai mode
+multi-machine, il faudra ajouter une persistance côté backend.
+
+## 7. Données et corpus
+
+Les données de travail sont organisées comme suit :
+
+```text
+data/
+  raw/                 # archives ou données brutes
+  processed/opus/      # CSV extraits depuis OPUS
+  processed/hf/        # imports Hugging Face
+  processed/nllb/      # train/valid/test finaux pour NLLB
+  SOURCES.md           # sources documentées et remarques qualité
+```
+
+Format canonique attendu pour les corpus parallèles :
+
+```text
+id,src_lang,tgt_lang,src_text,tgt_text,source
+```
+
+Format final pour le fine-tuning NLLB :
+
+```text
+id,split,src_lang,tgt_lang,src_lang_nllb,tgt_lang_nllb,src_text,tgt_text,source,domain,quality_score,is_religious,license
+```
+
+Le projet évite de biaiser le modèle vers le domaine religieux. Les corpus Bible
+doivent rester séparés ou limités fortement. Voir `data/SOURCES.md` pour les
+sources, volumes, limites et recommandations.
+
+### Repréparer le dataset NLLB
+
+Exemple avec les fichiers déjà convertis dans `data/processed/opus` et
+`data/processed/hf` :
+
+```powershell
+python scripts/prepare_nllb_training_data.py `
+  --inputs data/processed/opus/*.csv data/processed/hf/*.csv `
+  --output-dir data/processed/nllb `
+  --max-per-direction 120000
+```
+
+Sorties attendues :
+
+```text
+data/processed/nllb/nllb_train.csv
+data/processed/nllb/nllb_valid.csv
+data/processed/nllb/nllb_test.csv
+data/processed/nllb/nllb_summary.csv
+```
+
+## 8. Notebook unique de fine-tuning
+
+Le pipeline notebook est regroupé dans :
+
+```text
+notebooks/01_pipeline_nllb_lora.ipynb
+```
+
+Il couvre :
+
+- exploration du corpus ;
+- vérification GPU ;
+- préparation train/valid/test ;
+- fine-tuning LoRA de NLLB ;
+- suivi des pertes ;
+- évaluation BLEU/chrF ;
+- démonstration de traduction.
+
+Installez les dépendances notebook si besoin :
+
+```powershell
+python -m pip install notebook ipykernel matplotlib
+python -m ipykernel install --user --name traducteur-fr-en-ewe --display-name "Python (traducteur-fr-en-ewe)"
+```
+
+Ouvrez ensuite :
+
+```powershell
+jupyter notebook notebooks/01_pipeline_nllb_lora.ipynb
+```
+
+Dans le notebook :
+
+- `MODE = "smoke"` pour un test rapide ;
+- `MODE = "full"` pour un vrai entraînement ;
+- `REQUIRE_CUDA = True` pour éviter de lancer par erreur sur CPU ;
+- `OUTPUT_DIR = models/nllb-ewe-lora`.
+
+Un entraînement complet peut prendre longtemps car NLLB-200 distilled 600M reste
+un modèle lourd, même avec LoRA. Le temps dépend surtout du volume du corpus, de
+la longueur maximale des séquences, du batch size et du nombre d'epochs.
+
+## 9. Évaluation
+
+Évaluation d'un adapter LoRA :
+
+```powershell
+python scripts/evaluate_nllb_model.py `
+  --test data/processed/nllb/nllb_test.csv `
+  --model facebook/nllb-200-distilled-600M `
+  --adapter models/nllb-ewe-lora `
+  --output models/nllb-ewe-lora/evaluation_report.csv `
+  --device cuda
+```
+
+## 10. Tests et contrôles rapides
+
+Backend :
+
+```powershell
+pytest -q
+```
+
+Frontend :
+
+```powershell
+cd frontend
+npm run build
+```
+
+Vérification GPU :
+
+```powershell
+python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+```
+
+## 11. Docker
+
+Le Dockerfile fourni lance l'API en mode serveur. Le `docker-compose.yml`
+configure par défaut le backend en mode `fallback` et `DEVICE=cpu`.
+
+```powershell
+docker compose up --build
+```
+
+Pour utiliser CUDA dans Docker, il faut installer NVIDIA Container Toolkit et
+adapter le compose. Le flux recommandé pour l'entraînement reste le notebook
+local dans `.venv`.
+
+## 12. Structure du projet
 
 ```text
 src/traducteur/
-├── api/          # FastAPI
-├── nlp/          # traduction, normalisation, configuration des langues
-├── audio/        # STT/TTS optionnels
-├── data/         # ingestion/nettoyage/splitting
-└── evaluation/   # métriques
-frontend/         # interface React/Vite
-scripts/          # commandes de préparation et d'entraînement
-report/           # squelette LaTeX du rapport
-notebooks/        # notebooks de démonstration
+  api/          # FastAPI, schemas, routes
+  nlp/          # traduction, normalisation, langues
+  audio/        # STT/TTS optionnels
+  data/         # ingestion/nettoyage/splitting
+  evaluation/   # métriques
+frontend/       # interface React/Vite MiaGbe
+scripts/        # préparation corpus, évaluation, entraînement
+notebooks/      # notebook unique NLLB LoRA
+models/         # adapters, checkpoints, rapports
+data/           # données brutes et traitées
+tests/          # tests backend
 ```
 
-## Limites assumées
+## 13. Dépannage
 
-- Le fallback local n'est pas un vrai modèle de traduction ; il sert à rendre la démonstration exécutable même sans GPU.
-- Pour une vraie performance scientifique, il faut fine-tuner `facebook/nllb-200-distilled-600M` avec LoRA sur un corpus parallèle nettoyé.
-- Le module vocal ewe dépend fortement des données audio disponibles et doit être présenté comme preuve de concept si le corpus reste limité.
+### L'API ne démarre pas
 
-## Prochaines étapes scientifiques
+- Vérifiez que le `.venv` est activé.
+- Lancez `uvicorn` depuis la racine avec `--app-dir src`.
+- Vérifiez que `requirements.txt` est installé.
 
-1. Constituer le corpus parallèle : FLORES-200, JW300/OPUS, Bible parallèle, sources locales validées.
-2. Nettoyer les textes avec normalisation Unicode NFC.
-3. Fine-tuner NLLB-200 distilled 600M avec PEFT/LoRA.
-4. Évaluer sur FLORES devtest : BLEU, chrF++, analyse qualitative.
-5. Ajouter STT avec Whisper pour fr/en et MMS/Whisper adapté pour ewe.
+### Le frontend affiche une erreur de traduction
+
+- Démarrez d'abord l'API sur `http://127.0.0.1:8000`.
+- Vérifiez `VITE_API_URL` dans `frontend/.env.local`.
+- Redémarrez `npm run dev` après modification du `.env.local`.
+
+### L'entraînement part sur CPU
+
+- Vérifiez `torch.cuda.is_available()`.
+- Réinstallez PyTorch avec le wheel CUDA adapté.
+- Mettez `REQUIRE_CUDA = True` dans le notebook pour bloquer l'entraînement CPU.
+- Dans `.env`, utilisez `DEVICE=cuda` pour l'inférence backend.
+
+### Le Gestionnaire des tâches montre plusieurs GPU
+
+Sur un laptop hybride, Windows peut afficher :
+
+- `GPU 0` : Intel Graphics ;
+- `GPU 1` : NVIDIA GeForce RTX.
+
+Pour ce projet, la source fiable est PyTorch :
+
+```powershell
+python -c "import torch; print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+```
+
+Si cette commande affiche NVIDIA, l'entraînement utilise bien le GPU CUDA.
