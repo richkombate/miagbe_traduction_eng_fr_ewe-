@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Footer } from './components/Footer';
 import { HistoryPanel } from './components/HistoryPanel';
 import { LanguageSelector } from './components/LanguageSelector';
 import { TopBar } from './components/TopBar';
 import { TranslatorWorkspace } from './components/TranslatorWorkspace';
 import { useTranslationHistory } from './hooks/useTranslationHistory';
+import { useSpeechRecognition, speak, ttsSupported } from './hooks/useSpeech';
 import { translateText } from './lib/api';
 import { makeId } from './lib/storage';
 import './style.css';
@@ -21,6 +23,28 @@ function App() {
   const liveRequestRef = useRef(0);
 
   const { history, saved, addEntry, toggleFavorite, removeEntry, clearHistory } = useTranslationHistory(user);
+
+  const { listening, start: startListening, stop: stopListening, supported: micSupported } =
+    useSpeechRecognition({
+      lang: source,
+      onResult: (transcript) => setText(transcript),
+    });
+
+  function handleMicToggle() {
+    if (listening) {
+      stopListening();
+    } else {
+      setStatus('');
+      startListening();
+    }
+  }
+
+  function handleSpeak() {
+    if (!result) return;
+    if (!speak(result, target)) {
+      setStatus("La synthèse vocale n'est pas disponible pour cette langue.");
+    }
+  }
 
   const currentSavedEntry = useMemo(
     () => history.find((item) => item.sourceText === text && item.translatedText === result && item.source === source && item.target === target),
@@ -169,6 +193,9 @@ function App() {
             loading={loading}
             saved={currentSavedEntry?.favorite}
             status={status}
+            listening={listening}
+            micSupported={micSupported}
+            speakSupported={ttsSupported(target)}
             onTextChange={setText}
             onTranslate={() => runTranslation({ persist: true })}
             onClear={() => {
@@ -178,6 +205,8 @@ function App() {
             }}
             onCopy={handleCopy}
             onToggleSaved={handleToggleSaved}
+            onMicToggle={handleMicToggle}
+            onSpeak={handleSpeak}
           />
         </div>
 
@@ -193,6 +222,8 @@ function App() {
           onClear={clearHistory}
         />
       </section>
+
+      <Footer />
     </main>
   );
 }

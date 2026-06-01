@@ -2,16 +2,32 @@ from functools import lru_cache
 from fastapi import FastAPI, HTTPException, Response, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
-from traducteur.config import get_settings
+from traducteur.config import (
+    get_settings,
+    GROUP_NAME,
+    GROUP_MEMBERS,
+    PROJECT_TITLE,
+    COURSE,
+)
 from traducteur.nlp.translator import build_translator
+from traducteur.nlp.languages import LANGUAGES
 from traducteur.nlp.normalization import is_reasonable_text
-from .schemas import TranslateRequest, TranslateResponse, HealthResponse
+from .schemas import (
+    TranslateRequest,
+    TranslateResponse,
+    HealthResponse,
+    AboutResponse,
+    TranscribeResponse,
+)
 
 settings = get_settings()
 app = FastAPI(
-    title="Traducteur multilingue Français-Anglais-Ewe",
-    description="API de traduction et pipeline vocal pour projet universitaire IA/NLP.",
-    version="0.1.0",
+    title=f"{PROJECT_TITLE} - Groupe {GROUP_NAME}",
+    description=(
+        "API de traduction automatique (NLLB-200 + LoRA éwé) et pipeline vocal. "
+        f"Projet de groupe {GROUP_NAME} - {COURSE}."
+    ),
+    version="1.0.0",
 )
 
 app.add_middleware(
@@ -37,9 +53,32 @@ def get_translator():
 def root() -> dict[str, object]:
     return {
         "message": "API Traducteur multilingue Francais-Anglais-Ewe",
+        "group": GROUP_NAME,
+        "members": GROUP_MEMBERS,
         "docs": "/docs",
         "health": "/health",
-        "endpoints": ["/translate", "/transcribe", "/synthesize"],
+        "endpoints": ["/translate", "/transcribe", "/synthesize", "/about", "/languages"],
+    }
+
+
+@app.get("/about", response_model=AboutResponse)
+def about() -> AboutResponse:
+    return AboutResponse(
+        project=PROJECT_TITLE,
+        course=COURSE,
+        group=GROUP_NAME,
+        members=GROUP_MEMBERS,
+        languages=[f"{code} ({lang.label})" for code, lang in LANGUAGES.items()],
+    )
+
+
+@app.get("/languages")
+def languages() -> dict[str, object]:
+    return {
+        "languages": [
+            {"code": code, "label": lang.label, "nllb_code": lang.nllb_code}
+            for code, lang in LANGUAGES.items()
+        ]
     }
 
 
@@ -72,19 +111,22 @@ def translate(payload: TranslateRequest) -> TranslateResponse:
     return TranslateResponse(**result.__dict__)
 
 
-@app.post("/transcribe")
-async def transcribe_audio(file: UploadFile = File(...), lang: str = "fra"):
+@app.post("/transcribe", response_model=TranscribeResponse)
+async def transcribe_audio(file: UploadFile = File(...), lang: str = "fra") -> TranscribeResponse:
     if not settings.enable_stt:
-        return {
-            "text": "",
-            "lang": lang,
-            "warning": "STT désactivé. Activez ENABLE_STT=true et configurez le module audio.",
-        }
+        return TranscribeResponse(
+            text="",
+            lang=lang,
+            warning="STT serveur désactivé. Activez ENABLE_STT=true (Whisper) ou utilisez le micro du navigateur.",
+        )
     from traducteur.audio.stt import transcribe
 
     data = await file.read()
-    text = transcribe(data, lang=lang)
-    return {"text": text, "lang": lang}
+    try:
+        text = transcribe(data, lang=lang)
+    except Exception as exc:
+        return TranscribeResponse(text="", lang=lang, warning=f"Erreur STT: {exc}")
+    return TranscribeResponse(text=text, lang=lang)
 
 
 @app.post("/synthesize")

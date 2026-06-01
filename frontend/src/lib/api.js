@@ -15,3 +15,18 @@ export async function translateText({ text, source, target }) {
   }
   return response.json();
 }
+
+// Transcription serveur (Whisper) - utilisée si la reconnaissance navigateur
+// n'est pas disponible et que ENABLE_STT=true côté backend.
+export async function transcribeAudio({ blob, lang }) {
+  const form = new FormData();
+  form.append('file', blob, 'audio.webm');
+  const response = await fetch(`${API_URL}/transcribe?lang=${encodeURIComponent(lang)}`, {
+    method: 'POST',
+    body: form,
+  });
+  if (!response.ok) {
+    throw new Error('transcription_failed');
+  }
+  return response.json();
+}

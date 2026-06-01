@@ -696,3 +696,67 @@ textarea::placeholder {
     font-size: 1.2rem;
   }
 }
+
+/* --- Actions groupées (micro, effacer, copier, écouter) ------------------- */
+.panel-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- Bouton micro en cours d'écoute --------------------------------------- */
+.ghost-button.listening {
+  color: var(--red);
+  background: var(--soft-red);
+  animation: pulse-mic 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-mic {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* --- Pied de page : crédits du groupe GR02 -------------------------------- */
+.app-footer {
+  max-width: 1420px;
+  margin: 28px auto 6px;
+  padding: 18px 22px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  border-top: 4px solid var(--green);
+  text-align: center;
+}
+
+.footer-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.footer-members {
+  list-style: none;
+  margin: 12px 0 6px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 10px;
+}
+
+.footer-members li {
+  font-size: 0.85rem;
+  color: var(--ink);
+  background: var(--soft-green);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+
+.footer-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}

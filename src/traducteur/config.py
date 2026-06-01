@@ -1,6 +1,18 @@
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# --- Identité du projet (travail de groupe universitaire) ---------------------
+GROUP_NAME = "GR02"
+GROUP_MEMBERS = [
+    "AZIGLOSSOU Judith Gracia",
+    "NAPO NISSAO Rafia",
+    "WOGLO Koffi Boris Gilbride",
+    "PIO Sikirou Afeez Prince Cyrille",
+    "KOMBATE Gountande",
+]
+PROJECT_TITLE = "Traducteur Multilingue Français-Anglais-Éwé avec Reconnaissance Vocale"
+COURSE = "Master 1 IA-BD EPL S2 - Informatique et Gestion de données"
+
 
 class Settings(BaseSettings):
     translation_backend: str = "fallback"  # fallback | nllb

@@ -1,4 +1,4 @@
-import { Copy, Loader2, SendHorizontal, Star, Trash2 } from 'lucide-react';
+import { Copy, Loader2, Mic, MicOff, SendHorizontal, Star, Trash2, Volume2 } from 'lucide-react';
 import { getLanguageLabel } from '../lib/languages';
 
 export function TranslatorWorkspace({
@@ -9,11 +9,16 @@ export function TranslatorWorkspace({
   loading,
   saved,
   status,
+  listening,
+  micSupported,
+  speakSupported,
   onTextChange,
   onTranslate,
   onClear,
   onCopy,
   onToggleSaved,
+  onMicToggle,
+  onSpeak,
 }) {
   const isSaved = Boolean(saved);
 
@@ -22,10 +27,23 @@ export function TranslatorWorkspace({
       <div className="panel source-panel">
         <div className="panel-heading">
           <span>{getLanguageLabel(source)}</span>
-          <button className="ghost-button danger" type="button" onClick={onClear} disabled={!text}>
-            <Trash2 size={17} />
-            Effacer
-          </button>
+          <div className="panel-heading-actions">
+            {micSupported && (
+              <button
+                className={listening ? 'ghost-button listening' : 'ghost-button'}
+                type="button"
+                onClick={onMicToggle}
+                title="Dicter le texte (reconnaissance vocale)"
+              >
+                {listening ? <MicOff size={17} /> : <Mic size={17} />}
+                {listening ? 'Écoute...' : 'Dicter'}
+              </button>
+            )}
+            <button className="ghost-button danger" type="button" onClick={onClear} disabled={!text}>
+              <Trash2 size={17} />
+              Effacer
+            </button>
+          </div>
         </div>
 
         <textarea
@@ -63,9 +81,23 @@ export function TranslatorWorkspace({
         </div>
 
         <div className="panel-footer">
-          <button className="icon-button" type="button" onClick={onCopy} disabled={!result} aria-label="Copier">
-            <Copy size={19} />
-          </button>
+          <div className="panel-heading-actions">
+            <button className="icon-button" type="button" onClick={onCopy} disabled={!result} aria-label="Copier">
+              <Copy size={19} />
+            </button>
+            {speakSupported && (
+              <button
+                className="icon-button"
+                type="button"
+                onClick={onSpeak}
+                disabled={!result}
+                aria-label="Écouter la traduction"
+                title="Écouter la traduction"
+              >
+                <Volume2 size={19} />
+              </button>
+            )}
+          </div>
           <span>{loading ? 'En direct...' : result ? 'Automatique' : 'En attente'}</span>
         </div>
       </div>

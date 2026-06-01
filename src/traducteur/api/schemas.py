@@ -22,3 +22,17 @@ class HealthResponse(BaseModel):
     model_name: str
     stt_enabled: bool
     tts_enabled: bool
+
+
+class AboutResponse(BaseModel):
+    project: str
+    course: str
+    group: str
+    members: list[str]
+    languages: list[str]
+
+
+class TranscribeResponse(BaseModel):
+    text: str
+    lang: str
+    warning: str | None = None

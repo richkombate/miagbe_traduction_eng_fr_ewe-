@@ -53,36 +53,25 @@ data/processed/nllb/nllb_test.csv
 data/processed/nllb/nllb_summary.csv
 ```
 
-## 3. Lancement LoRA
+## 3. Lancement LoRA (notebook)
 
-Sur GPU modeste, commencez petit:
+L'entraînement se fait désormais **exclusivement dans le notebook unique**
+`notebooks/01_pipeline_nllb_lora.ipynb`, qui couvre tout le pipeline (corpus,
+GPU, tokenisation, fine-tuning LoRA, courbes de perte, évaluation BLEU/chrF,
+démo). Les anciens scripts d'entraînement ont été retirés au profit du notebook.
 
-```powershell
-.\.venv\Scripts\python.exe scripts\train_lora_nllb.py `
-  --train data/processed/nllb/nllb_train.csv `
-  --valid data/processed/nllb/nllb_valid.csv `
-  --output models/nllb-ewe-lora `
-  --train-batch-size 2 `
-  --eval-batch-size 2 `
-  --gradient-accumulation-steps 8 `
-  --epochs 3 `
-  --max-source-length 128 `
-  --max-target-length 128 `
-  --gradient-checkpointing
-```
-
-Pour un smoke test rapide:
+Ouvrez-le avec le kernel `.venv` :
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\train_lora_nllb.py `
-  --train data/processed/nllb/nllb_train.csv `
-  --valid data/processed/nllb/nllb_valid.csv `
-  --output models/nllb-ewe-lora-smoke `
-  --max-train-samples 64 `
-  --max-valid-samples 16 `
-  --epochs 0.01 `
-  --no-fp16
+jupyter notebook notebooks/01_pipeline_nllb_lora.ipynb
 ```
+
+Réglages principaux dans la cellule de configuration :
+
+- `MODE = "smoke"` pour une vérification rapide, `MODE = "full"` pour un vrai
+  entraînement ;
+- `REQUIRE_CUDA = True` pour éviter de lancer par erreur sur CPU ;
+- `OUTPUT_DIR = models/nllb-ewe-lora` pour la sortie de l'adapter.
 
 ## 4. Utiliser l'adapter dans l'API
 

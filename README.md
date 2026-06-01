@@ -1,5 +1,18 @@
 # MiaGbe - Traducteur français, anglais et éwé
 
+> **Projet de groupe — GR02** · Master 1 IA-BD EPL S2 (Informatique et Gestion de données)
+>
+> | Membre |
+> |--------|
+> | AZIGLOSSOU Judith Gracia |
+> | NAPO NISSAO Rafia |
+> | WOGLO Koffi Boris Gilbride |
+> | PIO Sikirou Afeez Prince Cyrille |
+> | KOMBATE Gountande |
+>
+> Sujet : *Traducteur Multilingue (Français, Anglais, Éwé) avec Reconnaissance Vocale*
+> — proposé par Mme GBEDEVI.
+
 MiaGbe est une plateforme de traduction multilingue français, anglais et éwé,
 développée dans le cadre d'un projet universitaire togolais. Le projet combine :
 
@@ -89,10 +102,11 @@ bon.
 
 ## 3. Configuration du backend
 
-Créez ou adaptez le fichier `.env` à la racine du projet :
+Copiez `.env.example` en `.env` à la racine du projet (ou adaptez le `.env`
+existant) :
 
 ```env
-TRANSLATION_BACKEND=fallback
+TRANSLATION_BACKEND=nllb
 MODEL_NAME=facebook/nllb-200-distilled-600M
 DEVICE=cuda
 ENABLE_STT=false
@@ -102,11 +116,18 @@ ADAPTER_PATH=models/nllb-ewe-lora
 
 Modes utiles :
 
-- `TRANSLATION_BACKEND=fallback` : mode démo léger, sans charger NLLB.
-- `TRANSLATION_BACKEND=nllb` : charge le modèle NLLB avec Transformers.
-- `DEVICE=cpu` : compatible partout, mais lent pour NLLB.
+- `TRANSLATION_BACKEND=nllb` : **mode recommandé**, charge le modèle NLLB-200 et
+  l'adapter LoRA éwé pour de vraies traductions neuronales.
+- `TRANSLATION_BACKEND=fallback` : mode démo léger (mini-dictionnaire), sans
+  charger NLLB. Utile pour tester l'interface sans GPU ni téléchargement.
 - `DEVICE=cuda` : utilise le GPU NVIDIA si PyTorch CUDA est disponible.
+- `DEVICE=cpu` : compatible partout, mais lent pour NLLB.
 - `ADAPTER_PATH=models/nllb-ewe-lora` : charge l'adapter LoRA final sauvegardé.
+
+**Robustesse** : en mode `nllb`, si le modèle ne peut pas être chargé (pas de
+GPU, mémoire insuffisante, modèle absent…), l'API ne plante pas : elle retombe
+automatiquement sur le dictionnaire de démonstration et signale un avertissement
+dans la réponse (`warning`). L'API reste donc toujours opérationnelle.
 
 Au premier lancement en mode `nllb`, Transformers peut télécharger le modèle
 depuis Hugging Face si le cache local ne le contient pas encore. Prévoyez une
@@ -180,6 +201,30 @@ rouvrez PowerShell, puis vérifiez :
 node -v
 npm -v
 ```
+
+## 5b. Reconnaissance vocale (STT) et synthèse vocale (TTS)
+
+L'interface intègre la reconnaissance vocale demandée dans le cahier des charges :
+
+- **Dicter** (bouton micro du panneau source) : utilise l'API Web Speech du
+  navigateur (Chrome/Edge) pour le français et l'anglais. Le texte reconnu
+  remplit la zone de saisie et la traduction se lance automatiquement.
+- **Écouter** (bouton haut-parleur du panneau cible) : lit la traduction à voix
+  haute via la synthèse vocale du navigateur (français, anglais).
+- L'éwé n'étant pas couvert par les moteurs vocaux des navigateurs, les boutons
+  vocaux n'apparaissent que pour les langues supportées.
+
+Pour une transcription **côté serveur** (modèle Whisper d'OpenAI, utile pour des
+fichiers audio ou un meilleur contrôle), activez dans `.env` :
+
+```env
+ENABLE_STT=true
+```
+
+L'endpoint `POST /transcribe` (multipart, champ `file`, paramètre `lang`)
+chargera alors `openai/whisper-base` à la première requête. Cela nécessite
+`librosa`/`soundfile` (déjà dans `requirements.txt`) et, pour les formats
+compressés comme webm/opus, `ffmpeg` installé sur la machine.
 
 ## 6. Connexion Google
 
@@ -355,8 +400,8 @@ src/traducteur/
   data/         # ingestion/nettoyage/splitting
   evaluation/   # métriques
 frontend/       # interface React/Vite MiaGbe
-scripts/        # préparation corpus, évaluation, entraînement
-notebooks/      # notebook unique NLLB LoRA
+scripts/        # préparation corpus et évaluation (l'entraînement est dans le notebook)
+notebooks/      # notebook unique NLLB LoRA (pipeline complet de fine-tuning)
 models/         # adapters, checkpoints, rapports
 data/           # données brutes et traitées
 tests/          # tests backend
