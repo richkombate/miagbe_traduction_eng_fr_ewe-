@@ -716,6 +716,20 @@ textarea::placeholder {
   50% { opacity: 0.55; }
 }
 
+/* --- Indicateur de synchronisation de l'historique ------------------------ */
+.sync-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  color: var(--green);
+}
+
+.sync-note.offline {
+  color: var(--amber);
+}
+
 /* --- Pied de page : crédits du groupe GR02 -------------------------------- */
 .app-footer {
   max-width: 1420px;

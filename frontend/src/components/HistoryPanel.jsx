@@ -1,4 +1,4 @@
-import { Clock3, RotateCcw, Star, Trash2 } from 'lucide-react';
+import { Clock3, CloudOff, RefreshCw, RotateCcw, Star, Trash2 } from 'lucide-react';
 import { getLanguageLabel } from '../lib/languages';
 import { formatHistoryDate } from '../lib/storage';
 
@@ -6,6 +6,7 @@ export function HistoryPanel({
   user,
   history,
   saved,
+  syncError,
   activeTab,
   onTabChange,
   onRestore,
@@ -41,6 +42,15 @@ export function HistoryPanel({
           </button>
         )}
       </div>
+
+      {user && (
+        <p className={syncError ? 'sync-note offline' : 'sync-note'}>
+          {syncError ? <CloudOff size={14} /> : <RefreshCw size={14} />}
+          {syncError
+            ? 'Hors ligne : modifications conservées localement.'
+            : 'Synchronisé sur votre compte (tous vos navigateurs).'}
+        </p>
+      )}
 
       {!user ? (
         <p className="empty-state">Connectez-vous pour retrouver vos traductions plus tard.</p>

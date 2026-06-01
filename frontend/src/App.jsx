@@ -22,7 +22,8 @@ function App() {
   const [activeHistoryTab, setActiveHistoryTab] = useState('history');
   const liveRequestRef = useRef(0);
 
-  const { history, saved, addEntry, toggleFavorite, removeEntry, clearHistory } = useTranslationHistory(user);
+  const { history, saved, syncError, addEntry, toggleFavorite, removeEntry, clearHistory } =
+    useTranslationHistory(user);
 
   const { listening, start: startListening, stop: stopListening, supported: micSupported } =
     useSpeechRecognition({
@@ -214,6 +215,7 @@ function App() {
           user={user}
           history={history}
           saved={saved}
+          syncError={syncError}
           activeTab={activeHistoryTab}
           onTabChange={setActiveHistoryTab}
           onRestore={handleRestore}

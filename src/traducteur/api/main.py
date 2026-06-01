@@ -1,5 +1,5 @@
 from functools import lru_cache
-from fastapi import FastAPI, HTTPException, Response, UploadFile, File
+from fastapi import FastAPI, HTTPException, Response, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 from traducteur.config import (
@@ -12,12 +12,16 @@ from traducteur.config import (
 from traducteur.nlp.translator import build_translator
 from traducteur.nlp.languages import LANGUAGES
 from traducteur.nlp.normalization import is_reasonable_text
+from traducteur.storage import history_store
+from .auth import resolve_user, AuthUser
 from .schemas import (
     TranslateRequest,
     TranslateResponse,
     HealthResponse,
     AboutResponse,
     TranscribeResponse,
+    HistoryPayload,
+    HistoryResponse,
 )
 
 settings = get_settings()
@@ -57,7 +61,14 @@ def root() -> dict[str, object]:
         "members": GROUP_MEMBERS,
         "docs": "/docs",
         "health": "/health",
-        "endpoints": ["/translate", "/transcribe", "/synthesize", "/about", "/languages"],
+        "endpoints": [
+            "/translate",
+            "/transcribe",
+            "/synthesize",
+            "/history",
+            "/about",
+            "/languages",
+        ],
     }
 
 
@@ -137,3 +148,24 @@ def synthesize(text: str, lang: str = "fra"):
 
     path = synthesize_to_file(text, lang=lang)
     return {"audio_url": str(path)}
+
+
+# --- Historique serveur (synchronisation entre navigateurs) -------------------
+
+
+@app.get("/history", response_model=HistoryResponse)
+def get_history(user: AuthUser = Depends(resolve_user)) -> HistoryResponse:
+    entries = history_store.load_history(settings.history_db_path, user.id)
+    return HistoryResponse(entries=entries, count=len(entries))
+
+
+@app.put("/history", response_model=HistoryResponse)
+def put_history(
+    payload: HistoryPayload, user: AuthUser = Depends(resolve_user)
+) -> HistoryResponse:
+    entries = history_store.replace_history(
+        settings.history_db_path,
+        user.id,
+        [entry.model_dump() for entry in payload.entries],
+    )
+    return HistoryResponse(entries=entries, count=len(entries))

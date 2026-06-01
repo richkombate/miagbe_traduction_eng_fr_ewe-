@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
 
+
 class TranslateRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=2000)
     source_lang: str = Field(..., examples=["fra", "eng", "ewe"])
@@ -36,3 +37,22 @@ class TranscribeResponse(BaseModel):
     text: str
     lang: str
     warning: str | None = None
+
+
+class HistoryEntry(BaseModel):
+    id: str
+    sourceText: str = ""
+    translatedText: str = ""
+    source: str = ""
+    target: str = ""
+    favorite: bool = False
+    createdAt: str | None = None
+
+
+class HistoryPayload(BaseModel):
+    entries: list[HistoryEntry] = Field(default_factory=list, max_length=200)
+
+
+class HistoryResponse(BaseModel):
+    entries: list[HistoryEntry]
+    count: int

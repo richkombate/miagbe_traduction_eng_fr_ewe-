@@ -248,8 +248,26 @@ VITE_API_URL=http://127.0.0.1:8000
 
 5. Redémarrez `npm run dev`.
 
-L'historique actuel est stocké localement dans le navigateur. Pour un vrai mode
-multi-machine, il faudra ajouter une persistance côté backend.
+Pour que le serveur **vérifie** les jetons d'identité Google, renseignez le même
+identifiant côté backend dans `.env` :
+
+```env
+GOOGLE_CLIENT_ID=votre-client-id.apps.googleusercontent.com
+```
+
+## 6b. Historique synchronisé entre navigateurs
+
+L'historique et les favoris sont **persistés côté serveur** (base SQLite
+`data/history.db`), rattachés au compte de l'utilisateur connecté. Un même
+utilisateur retrouve donc ses traductions depuis n'importe quel navigateur ou
+machine — le stockage local du navigateur ne sert plus que de cache hors-ligne.
+
+- Endpoints : `GET /history` et `PUT /history` (corps `{ "entries": [...] }`).
+- Identité : jeton Google vérifié via l'en-tête `Authorization: Bearer` si
+  `GOOGLE_CLIENT_ID` est configuré ; sinon repli sur l'en-tête `X-User-Id`
+  (mode démo non vérifié, pratique pour tester sans configurer Google).
+- Si le serveur est injoignable, l'interface bascule en cache local et affiche
+  un indicateur « Hors ligne ».
 
 ## 7. Données et corpus
 

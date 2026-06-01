@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     enable_tts: bool = False
     max_input_chars: int = 2000
 
+    # Persistance serveur de l'historique (synchronisation multi-navigateurs)
+    history_db_path: str = "data/history.db"
+    # Client OAuth Google : si renseigné, les jetons d'identité sont vérifiés.
+    google_client_id: str | None = None
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

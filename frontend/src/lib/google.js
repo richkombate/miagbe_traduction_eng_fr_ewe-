@@ -20,6 +20,9 @@ export function profileFromCredential(response) {
     name: profile.name || profile.email,
     email: profile.email,
     picture: profile.picture,
+    // Jeton d'identité Google : permet au serveur de vérifier l'utilisateur
+    // (sinon, l'identité repose sur l'en-tête X-User-Id en mode démo).
+    token: response.credential,
   };
 }
 

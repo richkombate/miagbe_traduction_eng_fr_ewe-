@@ -10,6 +10,9 @@ data/processed/*
 models/*
 !models/README.md
 logs/*
+*.db
+*.db-wal
+*.db-shm
 *.pt
 *.bin
 *.safetensors
