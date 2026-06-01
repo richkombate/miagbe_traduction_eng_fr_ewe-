@@ -721,9 +721,14 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 0 0 10px;
+  margin: 0;
+  padding: 0 18px 14px;
   font-size: 0.78rem;
   color: var(--green);
+}
+
+.sync-note svg {
+  flex-shrink: 0;
 }
 
 .sync-note.offline {
