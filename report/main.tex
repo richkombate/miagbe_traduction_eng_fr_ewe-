@@ -8,12 +8,28 @@
 \usepackage{geometry}
 \geometry{margin=2.5cm}
 
-\title{Projet de Traducteur Multilingue Français--Anglais--Ewe avec Reconnaissance Vocale}
-\author{Jean Nestor AZIGLOSSOU}
-\date{2026}
+\title{Projet de Traducteur Multilingue Français--Anglais--Éwé avec Reconnaissance Vocale}
+\author{%
+  \textbf{Groupe GR02} \\[0.4em]
+  AZIGLOSSOU Judith Gracia \\
+  NAPO NISSAO Rafia \\
+  WOGLO Koffi Boris Gilbride \\
+  PIO Sikirou Afeez Prince Cyrille \\
+  KOMBATE Gountande \\[0.6em]
+  \small Master 1 IA-BD EPL S2 --- Informatique et Gestion de données
+}
+\date{Juin 2026}
 
 \begin{document}
 \maketitle
+
+\begin{center}
+\fbox{\parbox{0.85\textwidth}{\centering
+\textbf{Travail de groupe --- GR02} \\
+Membres : AZIGLOSSOU Judith Gracia, NAPO NISSAO Rafia, WOGLO Koffi Boris Gilbride,
+PIO Sikirou Afeez Prince Cyrille, KOMBATE Gountande.}}
+\end{center}
+
 \tableofcontents
 
 \chapter*{Résumé}
@@ -27,10 +43,33 @@ La traduction automatique constitue un enjeu majeur d'inclusion numérique. L'ew
 La méthodologie comprend la collecte de corpus parallèles, la normalisation Unicode, le fine-tuning d'un modèle NLLB-200 distilled 600M avec LoRA, et l'évaluation par BLEU, chrF, WER et CER.
 
 \chapter{Architecture du système}
-Le système est constitué d'un frontend React, d'une API FastAPI, d'un module de traduction et de modules vocaux STT/TTS.
+Le système est constitué de quatre couches :
+\begin{itemize}
+  \item une \textbf{interface React/Vite} (saisie texte, traduction instantanée, historique et favoris, dictée et lecture vocale) ;
+  \item une \textbf{API FastAPI} exposant \texttt{/translate}, \texttt{/transcribe}, \texttt{/synthesize}, \texttt{/health} et \texttt{/about} ;
+  \item un \textbf{moteur de traduction} NLLB-200-distilled-600M fine-tuné avec LoRA, avec repli automatique sur un dictionnaire de démonstration en cas d'indisponibilité du modèle ;
+  \item un \textbf{module vocal} : reconnaissance vocale via l'API Web Speech du navigateur (français, anglais) et Whisper côté serveur (activable), synthèse vocale du navigateur pour la traduction orale.
+\end{itemize}
 
-\chapter{Résultats attendus et discussion}
-Les résultats seront comparés au modèle NLLB en zéro-shot et, lorsque possible, à des traductions externes. Les limites majeures concernent la disponibilité des données ewe et la qualité des corpus alignés.
+\chapter{Résultats et discussion}
+Le fine-tuning LoRA (rang 16, $\alpha=32$, projections \texttt{q\_proj}/\texttt{v\_proj}) de NLLB-200 a été évalué par BLEU et chrF (sacreBLEU) sur un jeu de test multidirectionnel.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{llrr}
+\toprule
+Source & Cible & BLEU & chrF \\
+\midrule
+Anglais & Français & 38.18 & 64.21 \\
+Français & Anglais & 42.75 & 62.02 \\
+Éwé & Français & 17.20 & 37.38 \\
+Français & Éwé & 9.33 & 30.32 \\
+\bottomrule
+\end{tabular}
+\caption{Scores BLEU/chrF par direction de traduction.}
+\end{table}
+
+Les paires français--anglais atteignent une qualité élevée, conforme aux capacités multilingues de NLLB. Les directions impliquant l'éwé restent plus faibles, ce qui est attendu pour une langue à faibles ressources : les scores chrF (37 et 30) montrent néanmoins une couverture lexicale réelle. Les limites majeures concernent la quantité et la qualité des corpus alignés éwé (forte présence de données religieuses, à équilibrer) et la durée d'entraînement.
 
 \chapter{Conclusion}
 Le projet constitue une base crédible pour explorer la traduction automatique des langues africaines à faibles ressources dans un contexte universitaire.
