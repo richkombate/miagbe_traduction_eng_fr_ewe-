@@ -144,7 +144,7 @@ Lancez cette commande depuis la racine du projet :
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
-uvicorn traducteur.api.main:app --reload --app-dir src
+ uvicorn traducteur.api.main:app --app-dir src
 ```
 
 URLs utiles :

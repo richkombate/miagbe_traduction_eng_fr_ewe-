@@ -1,7 +1,10 @@
 .venv/
+.idea
 __pycache__/
 *.pyc
 .env
+.env.example
+/frontend/.env.local
 .DS_Store
 data/raw/*
 data/interim/*
