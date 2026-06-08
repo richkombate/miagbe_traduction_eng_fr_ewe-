@@ -174,7 +174,7 @@ uvicorn traducteur.api.main:app --reload
 Dans un second terminal :
 
 ```powershell
-cd D:\python\traducteur-fr-en-ewe\frontend
+cd frontend
 npm install
 npm run dev
 ```
