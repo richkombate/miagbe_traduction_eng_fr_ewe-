@@ -30,6 +30,21 @@ LANG = {
 }
 
 
+def expand_inputs(patterns: list[str]) -> list[Path]:
+    """Developpe les globs (PowerShell ne le fait pas pour les .exe externes)."""
+    paths: list[Path] = []
+    for pattern in patterns:
+        matches = sorted(Path().glob(pattern.replace("\\", "/")))
+        if matches:
+            paths.extend(matches)
+        elif Path(pattern).exists():
+            paths.append(Path(pattern))
+    unique = sorted({p.resolve() for p in paths})
+    if not unique:
+        raise FileNotFoundError(f"Aucun fichier ne correspond a: {patterns}")
+    return unique
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--inputs", nargs="+", required=True)
@@ -76,8 +91,7 @@ def main() -> None:
     enc = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME).get_encoder().to(args.device).eval()
 
     grand_total = grand_kept = 0
-    for path_str in args.inputs:
-        path = Path(path_str)
+    for path in expand_inputs(args.inputs):
         df = pd.read_csv(path)
         if args.sample and len(df) > args.sample:
             df = df.sample(n=args.sample, random_state=42)

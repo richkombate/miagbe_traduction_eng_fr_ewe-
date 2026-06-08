@@ -298,26 +298,160 @@ Le projet évite de biaiser le modèle vers le domaine religieux. Les corpus Bib
 doivent rester séparés ou limités fortement. Voir `data/SOURCES.md` pour les
 sources, volumes, limites et recommandations.
 
-### Repréparer le dataset NLLB
+### Pipeline complet de préparation des données
 
-Exemple avec les fichiers déjà convertis dans `data/processed/opus` et
-`data/processed/hf` :
+Le dossier `data/processed/` n'est **pas** versionné (voir `.gitignore`) : après un
+clone, il faut régénérer les données localement. Voici la chaîne complète, du
+téléchargement jusqu'au dataset final prêt pour l'entraînement.
+
+Toutes les commandes se lancent depuis la racine du projet, avec le `.venv` activé,
+et tiennent **sur une seule ligne** (copier-coller direct dans PowerShell).
+
+Les scripts traitent un **format canonique** commun :
+`id,src_lang,tgt_lang,src_text,tgt_text,source`. Chaque étape lit le format de la
+précédente et écrit un nouveau fichier sans écraser l'entrée.
+
+#### Étape 1 — Télécharger les corpus OPUS et les convertir en CSV canoniques
 
 ```powershell
-python scripts/prepare_nllb_training_data.py `
-  --inputs data/processed/opus/*.csv data/processed/hf/*.csv `
-  --output-dir data/processed/nllb `
-  --max-per-direction 120000
+python scripts/download_opus_parallel.py --source recommended
 ```
 
-Sorties attendues :
+Télécharge les corpus OPUS recommandés (NLLB ee-fr, translatewiki ee-fr, TED2020,
+News-Commentary, Tatoeba en-fr), les dézippe et écrit un CSV canonique par corpus
+dans `data/processed/opus/`. Les `.zip` déjà présents ne sont pas re-téléchargés.
+Variantes : `--source all` (tous les corpus du catalogue), `--source <nom>` (un
+seul), `--list` (afficher le catalogue).
+
+#### Étape 2 — Importer le corpus Ghana NLP anglais-éwé (Hugging Face)
+
+```powershell
+python scripts/import_hf_parallel_dataset.py --dataset ghananlpcommunity/english-ewe-sentence-pairs-4m --src-column English --tgt-column Ewe --src-lang eng --tgt-lang ewe --min-quality 0.80 --max-rows 120000 --output data/processed/hf/ghana_en_ewe.csv
+```
+
+Importe en streaming le gros corpus anglais-éwé de Ghana NLP, garde les paires dont
+le score de similarité est `>= 0.80`, plafonne à 120 000 lignes, nettoie les
+espaces, et écrit `data/processed/hf/ghana_en_ewe.csv` au format canonique.
+
+#### Étape 3 — Filtrer les paires mal alignées (similarité cosinus, GPU)
+
+```powershell
+python scripts/align_filter.py --inputs data/processed/opus/*.csv data/processed/hf/*.csv --threshold 0.5 --device cuda
+```
+
+Encode chaque côté de chaque paire avec l'encodeur `nllb-200-distilled-600M`
+(mean-pooling + L2), calcule le cosinus source/cible et ne garde que les paires
+`cos >= 0.5`. Enlève les **traductions mésalignées**. Écrit un `*_aligned.csv` à
+côté de chaque entrée. Étape lourde (télécharge le modèle ~2,4 Go au 1er lancement)
+mais tourne sur GPU. Le seuil `0.5` est déjà validé (paires propres ~0.66-0.90,
+bruit ~0.33), donc cette étape suffit telle quelle. Pour re-vérifier le seuil sur
+un corpus existant (étape diagnostique optionnelle) :
+`python scripts/align_calibrate.py --train-csv data/processed/opus/nllb_ee_fr.csv --per-dir 150 --device cuda`
+(ne lancez pas `align_calibrate` sans `--train-csv` : son défaut pointe sur
+`nllb_train.csv`, qui n'existe qu'après l'Étape 5).
+
+#### Étape 4 — Filtrer la contamination de langue (fastText NLLB-LID)
+
+```powershell
+python scripts/langid_filter.py --inputs data/processed/opus/*_aligned.csv data/processed/hf/*_aligned.csv --min-prob 0.5 --check both
+```
+
+Vérifie avec le modèle `facebook/fasttext-language-identification` que chaque texte
+est réellement écrit dans la langue déclarée, et rejette sinon (ou si confiance
+`< 0.5`). Enlève la **contamination de langue** (ex. de l'anglais dans la colonne
+éwé) que le filtre cosinus ne détecte pas. Écrit un `*_aligned_lid.csv` à côté de
+chaque entrée. Télécharge le modèle fastText (~1,2 Go) au 1er lancement.
+
+#### Étape 4b — Filtrer la contamination résiduelle de l'éwé (caractères spécifiques)
+
+```powershell
+python scripts/ewe_charfilter.py --inputs data/processed/opus/*_lid.csv data/processed/hf/*_lid.csv
+```
+
+**Indispensable pour l'éwé.** fastText (Étape 4) ne sépare pas l'anglais de l'éwé
+sur les textes courts : il étiquette `ewe_Latn` avec forte confiance même de
+l'anglais évident (« By Mawuena Agede, » → ewe 0.97), donc beaucoup de bruit
+anglais reste côté éwé. Le seul signal fiable est orthographique : ce script ne
+garde que les lignes où chaque côté **déclaré éwé** contient au moins un caractère
+spécifique à l'éwé (`ɖ ƒ ŋ ɔ ɛ ɣ ʋ`, majuscules, voyelles nasalisées). Compromis
+assumé : il supprime aussi le vrai éwé écrit en pur ASCII (indistinguable de
+l'anglais automatiquement), au profit d'une précision maximale. Les côtés non-éwé
+(fr, en) ne sont pas touchés. Écrit un `*_lid_ewe.csv` à côté de chaque entrée.
+Sur le corpus NLLB ee-fr, retire environ 40 % des lignes restantes.
+
+#### Étape 5 — Construire le dataset final NLLB (train/valid/test)
+
+```powershell
+python scripts/prepare_nllb_training_data.py --inputs data/processed/opus/*_lid_ewe.csv data/processed/hf/*_lid_ewe.csv --output-dir data/processed/nllb --max-per-direction 120000
+```
+
+À partir des fichiers **entièrement nettoyés** `*_lid_ewe.csv` (on ne pointe pas sur
+`*.csv`, `*_lid.csv` ni `*_ewe.csv` pour ne pas réintroduire les versions moins
+filtrées) :
+
+> ⚠️ **Piège de nommage** : n'utilisez pas le glob `*_ewe.csv` ici. Le fichier
+> source `ghana_en_ewe.csv` se termine par `_ewe` et serait ré-attrapé **non
+> filtré** (120k paires en-ewe mésalignées), ce qui détruit la qualité des
+> directions en↔ewe. Le glob `*_lid_ewe.csv` ne matche que les sorties de
+> l'Étape 4b et exclut l'original Ghana. filtre longueur/ratio + déduplication,
+limite le domaine religieux, bidirectionnalise les paires, équilibre par direction,
+puis répartit en train/valid/test de façon déterministe. Sorties dans
+`data/processed/nllb/` :
 
 ```text
+data/processed/nllb/nllb_all.csv
 data/processed/nllb/nllb_train.csv
 data/processed/nllb/nllb_valid.csv
 data/processed/nllb/nllb_test.csv
 data/processed/nllb/nllb_summary.csv
 ```
+
+**À ce stade, les données sont prêtes pour l'entraînement** (notebook
+`notebooks/01_pipeline_nllb_lora.ipynb`).
+
+#### Étape 6 (optionnelle, après un premier entraînement) — Back-translation
+
+```powershell
+python scripts/make_backtranslation.py --sample-a 60000 --sample-b 60000
+```
+
+Augmentation de données qui exige le modèle LoRA **déjà entraîné**
+(`models/nllb-ewe-lora`) : à partir des paires éwé propres du train, génère des
+sources synthétiques (`fr->en` et `ewe->fr`) en gardant l'éwé humain en cible, pour
+renforcer les directions `en->ewe` et `fr->ewe`. Écrit
+`data/processed/nllb/nllb_train_aug.csv` (à utiliser comme nouveau train pour
+ré-entraîner). À lancer **après** un premier tour d'entraînement, pas au build initial.
+
+> Note PowerShell : contrairement à bash, **PowerShell ne développe pas les `*`**
+> pour les programmes externes. Les scripts `align_filter.py`, `langid_filter.py` et
+> `prepare_nllb_training_data.py` développent donc eux-mêmes les globs reçus dans
+> `--inputs` (les commandes ci-dessus fonctionnent telles quelles). Si vous écrivez
+> un script qui ne le fait pas, développez le glob côté PowerShell, par exemple :
+> `--inputs (Get-ChildItem data/processed/opus/*.csv).FullName`. Pour tester sur un
+> seul corpus, donnez un chemin précis : `--inputs data/processed/opus/nllb_ee_fr.csv`.
+
+#### Note de bootstrap (premier entraînement)
+
+Deux pièges classiques lors d'un setup à partir de zéro :
+
+- **`MODE = "smoke"` n'est pas un dataset à générer.** C'est une variable interne du
+  notebook `01_pipeline_nllb_lora.ipynb`. En `smoke`, le notebook sous-échantillonne
+  en mémoire les mêmes fichiers `data/processed/nllb/*.csv` et réduit le nombre de
+  steps, pour un test rapide de bout en bout. En `full`, il prend tout le corpus.
+  Aucune commande supplémentaire, aucun fichier `nllb_smoke` à produire.
+
+- **Œuf et poule avec `nllb_train_aug.csv`.** Par défaut le notebook lit
+  `data/processed/nllb/nllb_train_aug.csv` (le train augmenté par back-translation,
+  Étape 6). Or l'Étape 6 a besoin d'un modèle LoRA **déjà entraîné** : ce fichier
+  n'existe donc pas lors du tout premier entraînement. Pour le premier tour, faites
+  l'un des deux :
+  - dans le notebook, pointez `TRAIN_CSV` sur `nllb_train.csv` au lieu de
+    `nllb_train_aug.csv` ; ou
+  - créez une amorce identique au train propre :
+    `Copy-Item data/processed/nllb/nllb_train.csv data/processed/nllb/nllb_train_aug.csv`
+
+  Ordre réel : Étapes 1-5 → premier entraînement sur `nllb_train.csv` → Étape 6
+  (génère `nllb_train_aug.csv`) → ré-entraînement sur `nllb_train_aug.csv`.
 
 ## 8. Notebook unique de fine-tuning
 

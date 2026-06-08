@@ -43,6 +43,21 @@ def lid_code(value: object) -> str:
     return LANG_TO_LID[key]
 
 
+def expand_inputs(patterns: list[str]) -> list[Path]:
+    """Developpe les globs (PowerShell ne le fait pas pour les .exe externes)."""
+    paths: list[Path] = []
+    for pattern in patterns:
+        matches = sorted(Path().glob(pattern.replace("\\", "/")))
+        if matches:
+            paths.extend(matches)
+        elif Path(pattern).exists():
+            paths.append(Path(pattern))
+    unique = sorted({p.resolve() for p in paths})
+    if not unique:
+        raise FileNotFoundError(f"Aucun fichier ne correspond a: {patterns}")
+    return unique
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Filtre les paires dont le texte n'est pas dans la langue declaree.")
     p.add_argument("--inputs", nargs="+", required=True, help="CSV canoniques a filtrer.")
@@ -129,8 +144,8 @@ def main() -> None:
     args = parse_args()
     model = load_model()
     grand_total = grand_kept = 0
-    for path_str in args.inputs:
-        total, kept = filter_one(model, Path(path_str), args.min_prob, args.check, args.suffix)
+    for path in expand_inputs(args.inputs):
+        total, kept = filter_one(model, path, args.min_prob, args.check, args.suffix)
         grand_total += total
         grand_kept += kept
     pct = 100 * grand_kept / max(grand_total, 1)
