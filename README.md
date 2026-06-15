@@ -411,16 +411,47 @@ data/processed/nllb/nllb_summary.csv
 
 #### Étape 6 (optionnelle, après un premier entraînement) — Back-translation
 
+La direction `en↔ewe` reste faible **par manque de données propres** (~5,6k paires).
+La back-translation génère des paires synthétiques pour la renforcer, à partir des
+~490k paires `ewe-fr` propres dont on dispose. Procédure complète et **sans risque**
+pour le modèle déjà obtenu (on sauvegarde et on entraîne dans un dossier séparé) :
+
+**6.1 — Sauvegarder le modèle actuel** (avant tout, pour pouvoir comparer/revenir).
+On copie seulement les fichiers de l'adaptateur final, pas les lourds `checkpoint-*` :
 ```powershell
-python scripts/make_backtranslation.py --sample-a 60000 --sample-b 60000
+New-Item -ItemType Directory -Force models/nllb-ewe-lora-clean-2ep | Out-Null
+Get-ChildItem models/nllb-ewe-lora -File | Copy-Item -Destination models/nllb-ewe-lora-clean-2ep
 ```
 
-Augmentation de données qui exige le modèle LoRA **déjà entraîné**
-(`models/nllb-ewe-lora`) : à partir des paires éwé propres du train, génère des
-sources synthétiques (`fr->en` et `ewe->fr`) en gardant l'éwé humain en cible, pour
-renforcer les directions `en->ewe` et `fr->ewe`. Écrit
-`data/processed/nllb/nllb_train_aug.csv` (à utiliser comme nouveau train pour
-ré-entraîner). À lancer **après** un premier tour d'entraînement, pas au build initial.
+**6.2 — Générer les données augmentées** (GPU, ~1 h ; lance branché sur secteur) :
+```powershell
+python scripts/make_backtranslation.py --sample-a 60000 --sample-b 0
+```
+Lit le modèle actuel (`models/nllb-ewe-lora`) pour générer **60k paires `en->ewe`** :
+on traduit le français des paires éwé-fr propres en anglais (`fr->en`), en gardant
+l'**éwé humain en cible**. Écrit `data/processed/nllb/nllb_train_aug.csv` (train propre
++ ~60k synthétiques). **Ce script ne modifie pas le modèle** (il ne fait que le lire et
+écrire un CSV). Pour un essai plus rapide : `--sample-a 40000 --sample-b 0`.
+
+> **Pourquoi `--sample-b 0`** : la partie B (`ewe->fr` → paires `fr->ewe` synthétiques)
+> est désactivée car elle n'apporte presque rien. Ces phrases éwé **ont déjà leur vrai
+> partenaire français** dans le train (115k paires fr->ewe), donc B ne ferait que
+> remplacer le vrai français par une paraphrase machine — aucun nouveau contenu éwé, et
+> un risque de bruit. Seule la partie A (`en->ewe`) crée de la donnée vraiment nouvelle :
+> ces phrases éwé n'avaient jamais de partenaire anglais (direction affamée, 5,6k → ~65k).
+> La back-translation n'améliore que les directions **vers** l'éwé.
+
+**6.3 — Entraîner la version back-translation dans un dossier séparé.** Utilise le
+notebook dédié **`notebooks/02_backtranslation_nllb_lora.ipynb`** : il lit
+`nllb_train_aug.csv`, entraîne un nouvel adaptateur dans `models/nllb-ewe-lora-bt`
+(donc **n'écrase pas** `models/nllb-ewe-lora`), et compare automatiquement les scores
+au modèle de base. Le `valid`/`test` restent ceux d'origine → comparaison honnête,
+pas de fuite.
+
+**6.4 — Comparer et garder le meilleur.** Le notebook 02 affiche un tableau
+`baseline vs back-translation` (BLEU/chrF par direction). Gardez le modèle qui gagne
+sur `en↔ewe` ; l'autre reste en sauvegarde. La back-translation **peut** dégrader si
+le synthétique est bruité — d'où l'intérêt de toujours comparer avant d'adopter.
 
 > Note PowerShell : contrairement à bash, **PowerShell ne développe pas les `*`**
 > pour les programmes externes. Les scripts `align_filter.py`, `langid_filter.py` et
