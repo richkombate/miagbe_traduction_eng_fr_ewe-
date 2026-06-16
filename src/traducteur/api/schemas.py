@@ -39,6 +39,11 @@ class TranscribeResponse(BaseModel):
     warning: str | None = None
 
 
+class SynthesizeRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=2000)
+    lang: str = Field("fra", examples=["fra", "eng", "ewe"])
+
+
 class HistoryEntry(BaseModel):
     id: str
     sourceText: str = ""

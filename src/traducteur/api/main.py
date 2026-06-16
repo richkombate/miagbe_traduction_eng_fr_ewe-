@@ -20,6 +20,7 @@ from .schemas import (
     HealthResponse,
     AboutResponse,
     TranscribeResponse,
+    SynthesizeRequest,
     HistoryPayload,
     HistoryResponse,
 )
@@ -141,13 +142,24 @@ async def transcribe_audio(file: UploadFile = File(...), lang: str = "fra") -> T
 
 
 @app.post("/synthesize")
-def synthesize(text: str, lang: str = "fra"):
+def synthesize(payload: SynthesizeRequest) -> Response:
+    """Synthèse vocale (TTS). Renvoie un WAV. Couvre fr/en ET l'éwé (MMS-TTS)."""
     if not settings.enable_tts:
-        return {"audio_url": None, "warning": "TTS désactivé dans cette version de démonstration."}
-    from traducteur.audio.tts import synthesize_to_file
+        raise HTTPException(
+            status_code=503,
+            detail="TTS serveur désactivé. Activez ENABLE_TTS=true pour la voix éwé.",
+        )
+    from traducteur.audio.tts import synthesize_to_wav
 
-    path = synthesize_to_file(text, lang=lang)
-    return {"audio_url": str(path)}
+    try:
+        audio, _ = synthesize_to_wav(payload.text, payload.lang)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erreur TTS: {exc}") from exc
+    if not audio:
+        raise HTTPException(status_code=400, detail="Texte vide.")
+    return Response(content=audio, media_type="audio/wav")
 
 
 # --- Historique serveur (synchronisation entre navigateurs) -------------------

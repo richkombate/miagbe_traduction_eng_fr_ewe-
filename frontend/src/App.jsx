@@ -7,9 +7,24 @@ import { TopBar } from './components/TopBar';
 import { TranslatorWorkspace } from './components/TranslatorWorkspace';
 import { useTranslationHistory } from './hooks/useTranslationHistory';
 import { useSpeechRecognition, speak, ttsSupported } from './hooks/useSpeech';
-import { translateText } from './lib/api';
+import { translateText, synthesizeSpeech, transcribeAudio } from './lib/api';
+import { createWavRecorder } from './lib/recorder';
+import { getLanguageLabel } from './lib/languages';
 import { makeId } from './lib/storage';
 import './style.css';
+
+// Messages lisibles pour les erreurs de dictée (API Web Speech).
+const STT_ERRORS = {
+  'not-allowed': "Micro refusé. Autorisez le micro (icône cadenas de la barre d'adresse).",
+  'service-not-allowed': 'Micro bloqué par le navigateur ou le système.',
+  'no-speech': 'Aucune voix détectée. Parlez près du micro et réessayez.',
+  'audio-capture': 'Aucun micro détecté sur cet appareil.',
+  network: 'Dictée indisponible (la reconnaissance navigateur a besoin d’Internet).',
+  unsupported: 'La dictée vocale fonctionne sur Chrome ou Edge (pas Firefox/Safari).',
+  lang: 'La dictée n’est pas disponible pour l’éwé (non couvert par le navigateur).',
+  start: 'Impossible de démarrer le micro. Réessayez.',
+  unknown: 'La dictée a échoué. Réessayez.',
+};
 
 function App() {
   const [user, setUser] = useState(null);
@@ -20,7 +35,9 @@ function App() {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeHistoryTab, setActiveHistoryTab] = useState('history');
+  const [recording, setRecording] = useState(false);
   const liveRequestRef = useRef(0);
+  const recorderRef = useRef(null);
 
   const { history, saved, syncError, addEntry, toggleFavorite, removeEntry, clearHistory } =
     useTranslationHistory(user);
@@ -29,21 +46,65 @@ function App() {
     useSpeechRecognition({
       lang: source,
       onResult: (transcript) => setText(transcript),
+      onError: (code) => setStatus(STT_ERRORS[code] || STT_ERRORS.unknown),
     });
 
-  function handleMicToggle() {
-    if (listening) {
-      stopListening();
-    } else {
-      setStatus('');
-      startListening();
+  // Dictée serveur (éwé via MMS-ASR, ou navigateurs sans Web Speech) :
+  // on enregistre en WAV, puis on transcrit côté serveur à l'arrêt.
+  async function startServerDictation() {
+    try {
+      setStatus('Enregistrement… parlez, puis cliquez à nouveau pour transcrire.');
+      recorderRef.current = await createWavRecorder();
+      setRecording(true);
+    } catch {
+      setStatus('Micro inaccessible. Autorisez le micro dans le navigateur.');
     }
   }
 
-  function handleSpeak() {
+  async function stopServerDictation() {
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    setRecording(false);
+    if (!recorder) return;
+    try {
+      setStatus(`Transcription ${getLanguageLabel(source)} en cours…`);
+      const blob = await recorder.stop();
+      const data = await transcribeAudio({ blob, lang: source });
+      if (data.text) {
+        setText(data.text);
+        setStatus('');
+      } else {
+        setStatus(data.warning || 'Aucun texte reconnu.');
+      }
+    } catch {
+      setStatus('La transcription serveur a échoué (API + ENABLE_STT=true requis).');
+    }
+  }
+
+  function handleMicToggle() {
+    if (listening) { stopListening(); return; }        // Web Speech en cours
+    if (recording) { stopServerDictation(); return; }  // enregistrement en cours
+    setStatus('');
+    // fr/en + navigateur compatible -> dictée live (Web Speech, mot à mot).
+    if (micSupported) { startListening(); return; }
+    // sinon (éwé, ou Firefox/Safari) -> dictée serveur.
+    startServerDictation();
+  }
+
+  async function handleSpeak() {
     if (!result) return;
-    if (!speak(result, target)) {
-      setStatus("La synthèse vocale n'est pas disponible pour cette langue.");
+    // 1) Voix navigateur instantanée pour fr/en.
+    if (speak(result, target)) return;
+    // 2) Sinon (éwé) : synthèse côté serveur via MMS-TTS.
+    try {
+      setStatus('Synthèse vocale éwé en cours…');
+      const url = await synthesizeSpeech({ text: result, lang: target });
+      const audio = new Audio(url);
+      audio.onended = () => URL.revokeObjectURL(url);
+      await audio.play();
+      setStatus('');
+    } catch {
+      setStatus('Voix éwé indisponible (démarrez l’API avec ENABLE_TTS=true).');
     }
   }
 
@@ -194,7 +255,7 @@ function App() {
             loading={loading}
             saved={currentSavedEntry?.favorite}
             status={status}
-            listening={listening}
+            listening={listening || recording}
             micSupported={micSupported}
             speakSupported={ttsSupported(target)}
             onTextChange={setText}

@@ -4,8 +4,15 @@ Principe : on garde l'EWE humain en CIBLE et on genere une SOURCE synthetique.
 On part des paires propres (ewe_humain, fr_humain) du SPLIT TRAIN uniquement
 (pas de fuite test/valid), et on utilise le modele entraine pour :
 
-  A. fr -> en   => nouvelles paires  en_synth -> ewe_humain   (enrichit en->ewe, divers/non-biblique)
-  B. ewe -> fr  => nouvelles paires  fr_synth -> ewe_humain   (renforce fr->ewe, casse l'off-target)
+  A.  fr -> en   => nouvelles paires  en_synth -> ewe_humain   (enrichit en->ewe, divers/non-biblique)
+  A2. (meme en_synth)  ewe_humain -> en_synth                 (enrichit ewe->en, la direction affamee)
+  B.  ewe -> fr  => nouvelles paires  fr_synth -> ewe_humain   (renforce fr->ewe, casse l'off-target)
+
+Note sur A2 : pour ewe->en on garde l'EWE humain en SOURCE et on met l'anglais
+synthetique en CIBLE. Cet anglais vient de fr->en (la direction la plus forte,
+BLEU ~45), donc la cible reste propre/fluide. C'est la facon la moins chere
+d'equilibrer ewe->en (qui n'a aucune donnee synthetique aujourd'hui) : on
+reutilise les memes traductions que A, sans appel GPU supplementaire.
 
 Sortie : data/processed/nllb/nllb_train_aug.csv = train original + paires synthetiques.
 Le test et le valid ne sont PAS modifies.
@@ -35,6 +42,8 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--out", default="data/processed/nllb/nllb_train_aug.csv")
     ap.add_argument("--sample-a", type=int, default=60000, help="paires pour fr->en (en->ewe)")
     ap.add_argument("--sample-b", type=int, default=60000, help="paires pour ewe->fr (fr->ewe)")
+    ap.add_argument("--emit-ewe-eng", action=argparse.BooleanOptionalAction, default=True,
+                    help="emettre aussi ewe->en (ewe_humain -> en_synth) a partir des memes traductions que A")
     ap.add_argument("--min-quality", type=float, default=0.65, help="cos minimal du pool (cibles ewe pristines)")
     ap.add_argument("--batch-size", type=int, default=48)
     ap.add_argument("--num-beams", type=int, default=4)
@@ -114,6 +123,12 @@ def main() -> None:
         print(f"[A] fr->en sur {len(a)} paires (cree en->ewe)")
         en_synth = translate_batch(a["fr"].tolist(), "fra", "eng")
         emit("eng", "ewe", en_synth, a["ewe"].tolist(), "synthetic:bt:fr2en")
+
+        # A2. meme triple reutilise  =>  ewe_humain -> en_synth  (equilibre ewe->en).
+        # On garde l'ewe humain en SOURCE et l'anglais (issu de fr->en, fort) en CIBLE.
+        if args.emit_ewe_eng:
+            print(f"[A2] reutilise en_synth pour creer ewe->en ({len(a)} paires)")
+            emit("ewe", "eng", a["ewe"].tolist(), en_synth, "synthetic:pivot:fr2en")
 
     # B. ewe -> fr  =>  fr_synth -> ewe_humain
     if args.sample_b > 0:

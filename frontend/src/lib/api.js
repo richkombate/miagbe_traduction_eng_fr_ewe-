@@ -52,11 +52,26 @@ export async function saveHistory(user, entries) {
   return data.entries || [];
 }
 
+// Synthèse vocale serveur (MMS-TTS) - utilisée surtout pour l'éwé, que les
+// navigateurs ne savent pas prononcer. Renvoie une URL de blob audio à lire.
+export async function synthesizeSpeech({ text, lang }) {
+  const response = await fetch(`${API_URL}/synthesize`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, lang }),
+  });
+  if (!response.ok) {
+    throw new Error('tts_failed');
+  }
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
+
 // Transcription serveur (Whisper) - utilisée si la reconnaissance navigateur
 // n'est pas disponible et que ENABLE_STT=true côté backend.
 export async function transcribeAudio({ blob, lang }) {
   const form = new FormData();
-  form.append('file', blob, 'audio.webm');
+  form.append('file', blob, 'audio.wav');
   const response = await fetch(`${API_URL}/transcribe?lang=${encodeURIComponent(lang)}`, {
     method: 'POST',
     body: form,

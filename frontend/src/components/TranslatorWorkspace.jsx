@@ -28,17 +28,19 @@ export function TranslatorWorkspace({
         <div className="panel-heading">
           <span>{getLanguageLabel(source)}</span>
           <div className="panel-heading-actions">
-            {micSupported && (
-              <button
-                className={listening ? 'ghost-button listening' : 'ghost-button'}
-                type="button"
-                onClick={onMicToggle}
-                title="Dicter le texte (reconnaissance vocale)"
-              >
-                {listening ? <MicOff size={17} /> : <Mic size={17} />}
-                {listening ? 'Écoute...' : 'Dicter'}
-              </button>
-            )}
+            <button
+              className={listening ? 'ghost-button listening' : 'ghost-button'}
+              type="button"
+              onClick={onMicToggle}
+              title={
+                micSupported
+                  ? 'Dicter le texte (reconnaissance vocale)'
+                  : 'Dictée vocale (Chrome/Edge, langue fr ou en)'
+              }
+            >
+              {listening ? <MicOff size={17} /> : <Mic size={17} />}
+              {listening ? 'Écoute...' : 'Dicter'}
+            </button>
             <button className="ghost-button danger" type="button" onClick={onClear} disabled={!text}>
               <Trash2 size={17} />
               Effacer
