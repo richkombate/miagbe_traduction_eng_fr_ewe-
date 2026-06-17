@@ -1,5 +1,6 @@
 from functools import lru_cache
 from fastapi import FastAPI, HTTPException, Response, UploadFile, File, Depends
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
 from traducteur.config import (
@@ -52,6 +53,20 @@ def get_translator():
         settings.device,
         settings.adapter_path,
     )
+
+
+@app.on_event("startup")
+def _prewarm_stt() -> None:
+    """Précharge les modèles STT au démarrage pour éviter la lenteur du premier appel."""
+    if not settings.enable_stt:
+        return
+    from traducteur.audio.stt import warmup
+
+    for lang in ("fra", "ewe"):
+        try:
+            warmup(lang)
+        except Exception:
+            pass
 
 
 @app.get("/")
@@ -135,7 +150,7 @@ async def transcribe_audio(file: UploadFile = File(...), lang: str = "fra") -> T
 
     data = await file.read()
     try:
-        text = transcribe(data, lang=lang)
+        text = await run_in_threadpool(transcribe, data, lang)
     except Exception as exc:
         return TranscribeResponse(text="", lang=lang, warning=f"Erreur STT: {exc}")
     return TranscribeResponse(text=text, lang=lang)

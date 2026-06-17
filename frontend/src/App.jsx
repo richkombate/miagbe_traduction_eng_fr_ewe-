@@ -6,25 +6,12 @@ import { LanguageSelector } from './components/LanguageSelector';
 import { TopBar } from './components/TopBar';
 import { TranslatorWorkspace } from './components/TranslatorWorkspace';
 import { useTranslationHistory } from './hooks/useTranslationHistory';
-import { useSpeechRecognition, speak, ttsSupported } from './hooks/useSpeech';
+import { speak, ttsSupported } from './hooks/useSpeech';
 import { translateText, synthesizeSpeech, transcribeAudio } from './lib/api';
 import { createWavRecorder } from './lib/recorder';
 import { getLanguageLabel } from './lib/languages';
 import { makeId } from './lib/storage';
 import './style.css';
-
-// Messages lisibles pour les erreurs de dictée (API Web Speech).
-const STT_ERRORS = {
-  'not-allowed': "Micro refusé. Autorisez le micro (icône cadenas de la barre d'adresse).",
-  'service-not-allowed': 'Micro bloqué par le navigateur ou le système.',
-  'no-speech': 'Aucune voix détectée. Parlez près du micro et réessayez.',
-  'audio-capture': 'Aucun micro détecté sur cet appareil.',
-  network: 'Dictée indisponible (la reconnaissance navigateur a besoin d’Internet).',
-  unsupported: 'La dictée vocale fonctionne sur Chrome ou Edge (pas Firefox/Safari).',
-  lang: 'La dictée n’est pas disponible pour l’éwé (non couvert par le navigateur).',
-  start: 'Impossible de démarrer le micro. Réessayez.',
-  unknown: 'La dictée a échoué. Réessayez.',
-};
 
 function App() {
   const [user, setUser] = useState(null);
@@ -36,20 +23,14 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [activeHistoryTab, setActiveHistoryTab] = useState('history');
   const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const liveRequestRef = useRef(0);
   const recorderRef = useRef(null);
 
   const { history, saved, syncError, addEntry, toggleFavorite, removeEntry, clearHistory } =
     useTranslationHistory(user);
 
-  const { listening, start: startListening, stop: stopListening, supported: micSupported } =
-    useSpeechRecognition({
-      lang: source,
-      onResult: (transcript) => setText(transcript),
-      onError: (code) => setStatus(STT_ERRORS[code] || STT_ERRORS.unknown),
-    });
-
-  // Dictée serveur (éwé via MMS-ASR, ou navigateurs sans Web Speech) :
+  // Dictée serveur pour TOUTES les langues (fr/en via Whisper, éwé via MMS-ASR) :
   // on enregistre en WAV, puis on transcrit côté serveur à l'arrêt.
   async function startServerDictation() {
     try {

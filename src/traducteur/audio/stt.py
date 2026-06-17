@@ -14,13 +14,26 @@ _WHISPER_MODEL = "openai/whisper-base"
 _MMS_ASR_MODEL = "facebook/mms-1b-all"
 _MMS_LANG = {"ewe": "ewe", "fra": "fra", "eng": "eng"}
 
+# Adaptateur MMS actuellement chargé sur le modèle. On évite ainsi de rappeler
+# load_adapter() (coûteux) à chaque transcription si la langue ne change pas.
+_mms_current_lang: str | None = None
+
+
+def _device() -> str:
+    """Renvoie "cuda" si un GPU est disponible, sinon "cpu"."""
+    import torch
+
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
 
 @lru_cache
 def _get_pipeline():
     """Charge paresseusement le pipeline Whisper (Speech-to-Text) pour fr/en."""
     from transformers import pipeline
+    import torch
 
-    return pipeline("automatic-speech-recognition", model=_WHISPER_MODEL)
+    device = 0 if torch.cuda.is_available() else -1
+    return pipeline("automatic-speech-recognition", model=_WHISPER_MODEL, device=device)
 
 
 @lru_cache
@@ -38,13 +51,21 @@ def _transcribe_mms(waveform, lang: str) -> str:
     """Transcrit un signal 16 kHz avec MMS-ASR en activant l'adaptateur de langue."""
     import torch
 
+    global _mms_current_lang
+
     mms_lang = _MMS_LANG[lang]
     processor, model = _get_mms_asr()
-    # Bascule le modèle sur l'adaptateur de la langue cible (ex. "ewe").
-    processor.tokenizer.set_target_lang(mms_lang)
-    model.load_adapter(mms_lang)
+    device = _device()
 
-    inputs = processor(waveform, sampling_rate=16000, return_tensors="pt")
+    # Bascule sur l'adaptateur de la langue cible UNE SEULE FOIS, puis on garde le
+    # modèle (et son adaptateur) sur le GPU pour toutes les requêtes suivantes.
+    if _mms_current_lang != mms_lang:
+        processor.tokenizer.set_target_lang(mms_lang)
+        model.load_adapter(mms_lang)
+        model.to(device)
+        _mms_current_lang = mms_lang
+
+    inputs = processor(waveform, sampling_rate=16000, return_tensors="pt").to(device)
     with torch.no_grad():
         logits = model(**inputs).logits
     predicted_ids = torch.argmax(logits, dim=-1)
@@ -52,11 +73,10 @@ def _transcribe_mms(waveform, lang: str) -> str:
 
 
 def transcribe(audio_bytes: bytes, lang: str = "fra") -> str:
-    """Transcrit un enregistrement audio en texte avec Whisper (OpenAI).
+    """Transcrit un enregistrement audio en texte.
 
-    L'éwé n'est pas couvert nativement par Whisper : on laisse alors le modèle
-    détecter automatiquement la langue. Pour le français et l'anglais, on force
-    la langue cible afin d'améliorer la précision.
+    Français / anglais passent par Whisper (OpenAI), l'éwé par MMS-ASR (Meta).
+    Le calcul se fait sur GPU si CUDA est disponible, sinon sur CPU.
 
     L'audio est décodé avec ``librosa`` (rééchantillonné à 16 kHz, mono), ce qui
     accepte la plupart des formats (wav, flac, ogg, et webm/opus si ffmpeg est
@@ -84,3 +104,20 @@ def transcribe(audio_bytes: bytes, lang: str = "fra") -> str:
 
     result = asr(waveform, generate_kwargs=generate_kwargs)
     return (result.get("text") or "").strip()
+
+
+def warmup(lang: str = "fra") -> None:
+    """Précharge le modèle et déclenche une inférence à blanc.
+
+    Appelé au démarrage du serveur pour éliminer le coût du démarrage à froid
+    (téléchargement + chargement + compilation des noyaux GPU) sur la première
+    vraie requête. Échoue silencieusement si le modèle n'est pas disponible.
+    """
+    import numpy as np
+
+    silence = np.zeros(16000, dtype="float32")
+    if lang == "ewe":
+        _transcribe_mms(silence, "ewe")
+    else:
+        asr = _get_pipeline()
+        asr(silence)
