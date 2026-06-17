@@ -9,8 +9,8 @@ export function TranslatorWorkspace({
   loading,
   saved,
   status,
-  listening,
-  micSupported,
+  recording,
+  transcribing,
   speakSupported,
   onTextChange,
   onTranslate,
@@ -29,17 +29,26 @@ export function TranslatorWorkspace({
           <span>{getLanguageLabel(source)}</span>
           <div className="panel-heading-actions">
             <button
-              className={listening ? 'ghost-button listening' : 'ghost-button'}
+              className={recording ? 'ghost-button listening' : 'ghost-button'}
               type="button"
               onClick={onMicToggle}
+              disabled={transcribing}
               title={
-                micSupported
-                  ? 'Dicter le texte (reconnaissance vocale)'
-                  : 'Dictée vocale (Chrome/Edge, langue fr ou en)'
+                transcribing
+                  ? 'Transcription en cours…'
+                  : recording
+                    ? 'Cliquez pour arrêter et transcrire'
+                    : 'Dicter le texte (transcription côté serveur)'
               }
             >
-              {listening ? <MicOff size={17} /> : <Mic size={17} />}
-              {listening ? 'Écoute...' : 'Dicter'}
+              {transcribing ? (
+                <Loader2 className="spin" size={17} />
+              ) : recording ? (
+                <MicOff size={17} />
+              ) : (
+                <Mic size={17} />
+              )}
+              {transcribing ? 'Transcription…' : recording ? 'Arrêter' : 'Dicter'}
             </button>
             <button className="ghost-button danger" type="button" onClick={onClear} disabled={!text}>
               <Trash2 size={17} />

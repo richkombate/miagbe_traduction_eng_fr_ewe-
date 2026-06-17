@@ -47,6 +47,7 @@ function App() {
     recorderRef.current = null;
     setRecording(false);
     if (!recorder) return;
+    setTranscribing(true);
     try {
       setStatus(`Transcription ${getLanguageLabel(source)} en cours…`);
       const blob = await recorder.stop();
@@ -59,16 +60,15 @@ function App() {
       }
     } catch {
       setStatus('La transcription serveur a échoué (API + ENABLE_STT=true requis).');
+    } finally {
+      setTranscribing(false);
     }
   }
 
   function handleMicToggle() {
-    if (listening) { stopListening(); return; }        // Web Speech en cours
-    if (recording) { stopServerDictation(); return; }  // enregistrement en cours
+    if (transcribing) return;                          // transcription en cours, on ignore le clic
+    if (recording) { stopServerDictation(); return; }  // enregistrement en cours -> on transcrit
     setStatus('');
-    // fr/en + navigateur compatible -> dictée live (Web Speech, mot à mot).
-    if (micSupported) { startListening(); return; }
-    // sinon (éwé, ou Firefox/Safari) -> dictée serveur.
     startServerDictation();
   }
 
@@ -236,8 +236,8 @@ function App() {
             loading={loading}
             saved={currentSavedEntry?.favorite}
             status={status}
-            listening={listening || recording}
-            micSupported={micSupported}
+            recording={recording}
+            transcribing={transcribing}
             speakSupported={ttsSupported(target)}
             onTextChange={setText}
             onTranslate={() => runTranslation({ persist: true })}
