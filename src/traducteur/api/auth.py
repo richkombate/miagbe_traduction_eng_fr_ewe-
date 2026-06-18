@@ -1,20 +1,3 @@
-"""Identification de l'utilisateur pour la persistance de l'historique.
-
-Deux modes, dans l'ordre de préférence :
-
-1. **Vérifié (production)** : si un client OAuth Google est configuré
-   (``GOOGLE_CLIENT_ID``) et que la requête porte un en-tête
-   ``Authorization: Bearer <id_token>``, le jeton est vérifié auprès de Google
-   (endpoint *tokeninfo*). On obtient un ``sub`` de confiance.
-
-2. **Démo (sans configuration Google)** : on accepte les en-têtes
-   ``X-User-Id`` / ``X-User-Email`` fournis par le frontend (identité non
-   vérifiée). Pratique pour tester la synchronisation sans configurer Google.
-
-Dans les deux cas, l'identité sert uniquement de clé de rangement de
-l'historique ; aucun mot de passe n'est stocké.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass

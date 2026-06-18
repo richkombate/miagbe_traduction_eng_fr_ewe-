@@ -2,13 +2,13 @@
 
 > **Projet de groupe — GR02** · Master 1 IA-BD EPL S2 (Informatique et Gestion de données)
 >
-> | Membre |
-> |--------|
-> | AZIGLOSSOU Judith Gracia |
-> | NAPO NISSAO Rafia |
-> | WOGLO Koffi Boris Gilbride |
+> | Membre                           |
+> |----------------------------------|
+> | AZIGLOSSOU Judith Gracia         |
+> | NAPO NISSAO Rafia                |
+> | WOGLO Koffi Boris Gilbride       |
 > | PIO Sikirou Afeez Prince Cyrille |
-> | KOMBATE Gountande |
+> | KOMBATE Gountande                |
 >
 > Sujet : *Traducteur Multilingue (Français, Anglais, Éwé) avec Reconnaissance Vocale*
 > — proposé par Mme GBEDEVI.
@@ -363,15 +363,15 @@ New-Item -ItemType Directory -Force models/nllb-ewe-lora-clean-2ep | Out-Null
 Get-ChildItem models/nllb-ewe-lora -File | Copy-Item -Destination models/nllb-ewe-lora-clean-2ep
 ```
 
-**6.2 — Générer les données augmentées** (GPU, ~1 h ; lance branché sur secteur) :
-```powershell
-python scripts/make_backtranslation.py --sample-a 60000 --sample-b 0
-```
-Lit le modèle actuel (`models/nllb-ewe-lora`) pour générer **60k paires `en->ewe`** :
-on traduit le français des paires éwé-fr propres en anglais (`fr->en`), en gardant
-l'**éwé humain en cible**. Écrit `data/processed/nllb/nllb_train_aug.csv` (train propre
-+ ~60k synthétiques). **Ce script ne modifie pas le modèle** (il ne fait que le lire et
-écrire un CSV). Pour un essai plus rapide : `--sample-a 40000 --sample-b 0`.
+**6.2 — Générer les données augmentées** (GPU, ~1 h) : ouvre le notebook
+`notebooks/02_backtranslation_nllb_lora.ipynb`, mets `RUN_BACKTRANSLATION = True`
+dans la cellule de configuration, puis exécute la **section 2**.
+
+Cette étape lit le modèle actuel (`models/nllb-ewe-lora`) pour générer **60k paires
+`en->ewe`** : on traduit le français des paires éwé-fr propres en anglais (`fr->en`),
+en gardant l'**éwé humain en cible**. Elle écrit `data/processed/nllb/nllb_train_aug.csv`
+(train propre + ~60k synthétiques) et **ne modifie pas le modèle**. Pour un essai plus
+rapide, baisse `BT_SAMPLE_A` (ex. 40000) et garde `BT_SAMPLE_B = 0`.
 
 > **Pourquoi `--sample-b 0`** : la partie B (`ewe->fr` → paires `fr->ewe` synthétiques)
 > est désactivée car elle n'apporte presque rien. Ces phrases éwé **ont déjà leur vrai
@@ -461,16 +461,10 @@ la longueur maximale des séquences, du batch size et du nombre d'epochs.
 
 ## 9. Évaluation
 
-Évaluation d'un adapter LoRA :
-
-```powershell
-python scripts/evaluate_nllb_model.py `
-  --test data/processed/nllb/nllb_test.csv `
-  --model facebook/nllb-200-distilled-600M `
-  --adapter models/nllb-ewe-lora `
-  --output models/nllb-ewe-lora/evaluation_report.csv `
-  --device cuda
-```
+Évaluation d'un adaptateur LoRA : exécute la **section 9 (Évaluation finale BLEU / chrF)**
+du notebook `01_pipeline_nllb_lora.ipynb`. Elle génère les traductions sur `nllb_test.csv`
+par direction, calcule BLEU et chrF, et écrit `models/nllb-ewe-lora/evaluation_report.csv`.
+La comparaison **base vs adaptateur** sur FLORES-200 est en **section 10** du même notebook.
 
 ## 10. Tests et contrôles rapides
 
@@ -516,8 +510,7 @@ src/traducteur/
   data/         # ingestion/nettoyage/splitting
   evaluation/   # métriques
 frontend/       # interface React/Vite MiaGbe
-scripts/        # préparation corpus et évaluation (l'entraînement est dans le notebook)
-notebooks/      # notebook unique NLLB LoRA (pipeline complet de fine-tuning)
+notebooks/      # 00 données · 01 pipeline NLLB+LoRA · 02 back-translation (tout le code)
 models/         # adapters, checkpoints, rapports
 data/           # données brutes et traitées
 tests/          # tests backend
