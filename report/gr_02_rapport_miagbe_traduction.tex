@@ -309,6 +309,7 @@ dépôt \textbf{OPUS} (\texttt{opus.nlpl.eu}, téléchargement direct), la bibli
 \centering\small
 \setstretch{1.1}
 \renewcommand{\arraystretch}{1.2}
+\caption{Provenance des sources. Toutes sont publiques et citables ; le corpus Ghana NLP (en–ewe, biblique) a été écarté pour cause de biais.}
 \begin{tabularx}{\textwidth}{l l X l}
 \toprule
 \rowcolor{light}
@@ -325,7 +326,6 @@ FLORES-200 (dev)     & fr/en/ewe    & Meta — benchmark aligné (éval)  & HF H
 MAFAND (lafand-mt)   & fr–ewe       & Masakhane — actualités          & GitHub \\
 \bottomrule
 \end{tabularx}
-\caption{Provenance des sources. Toutes sont publiques et citables ; le corpus Ghana NLP (en–ewe, biblique) a été écarté pour cause de biais.}
 \end{table}
 
 L'apport du projet n'est donc pas la collecte brute, mais l'\textbf{ingénierie de
@@ -380,6 +380,7 @@ quantité \emph{propre et équilibrée}.
 \centering\small
 \setstretch{1.1}
 \renewcommand{\arraystretch}{1.2}
+\caption{Entonnoir de données : du brut collecté au corpus final équilibré. Environ 1,4 million de paires \emph{exploitables} ont été écartées par choix d'équilibrage (plafond par direction).}
 \begin{tabular}{l r}
 \toprule
 \rowcolor{light}
@@ -395,13 +396,13 @@ Bidirectionnalisation ($\times 2$) & 2\,128\,712 \\
 \multicolumn{2}{l}{\itshape dont train 669\,904 \textbullet{} validation 13\,853 \textbullet{} test 13\,987} \\
 \bottomrule
 \end{tabular}
-\caption{Entonnoir de données : du brut collecté au corpus final équilibré. Environ 1,4 million de paires \emph{exploitables} ont été écartées par choix d'équilibrage (plafond par direction).}
 \end{table}
 
 \begin{table}[H]
 \centering\small
 \setstretch{1.1}
 \renewcommand{\arraystretch}{1.2}
+\caption{Volumétrie du corpus trilingue final. Les six directions sont volontairement équilibrées.}
 \begin{tabular}{l r r r r r r r}
 \toprule
 \rowcolor{light}
@@ -412,7 +413,6 @@ Train & 104\,499 & 115\,223 & 104\,499 & 115\,184 & 115\,223 & 115\,276 & \textb
 \multicolumn{8}{l}{\itshape Validation : 13\,853 paires \quad\textbullet\quad Test : 13\,987 paires} \\
 \bottomrule
 \end{tabular}
-\caption{Volumétrie du corpus trilingue final. Les six directions sont volontairement équilibrées.}
 \end{table}
 
 \subsection{Contrôle du biais}
@@ -449,6 +449,7 @@ gelées : la tokenisation et les représentations de NLLB ne sont donc pas dégr
 \centering\small
 \setstretch{1.1}
 \renewcommand{\arraystretch}{1.25}
+\caption{Configuration d'entraînement de l'adaptateur LoRA et justifications.}
 \begin{tabularx}{\textwidth}{>{\bfseries\color{primary}}l X}
 \toprule
 \rowcolor{light}\textbf{Hyperparamètre} & \textbf{Valeur et justification} \\
@@ -464,7 +465,6 @@ Longueur de séquence & 128 tokens en source et en cible. \\
 Sélection & \emph{load best model} : on conserve le point de contrôle de meilleure \code{eval_loss}. \\
 \bottomrule
 \end{tabularx}
-\caption{Configuration d'entraînement de l'adaptateur LoRA et justifications.}
 \end{table}
 
 \subsection{Dynamique d'entraînement}
@@ -478,6 +478,7 @@ conserve le meilleur état même en cas de léger sur-apprentissage tardif.
 \centering\small
 \setstretch{1.1}
 \renewcommand{\arraystretch}{1.2}
+\caption{Décroissance régulière de la perte de validation (extraits).}
 \begin{tabular}{r r r}
 \toprule
 \rowcolor{light}\textbf{Pas} & \textbf{Époque} & \textbf{Perte de validation} \\
@@ -488,7 +489,6 @@ conserve le meilleur état même en cas de léger sur-apprentissage tardif.
 6\,250 & 2,00 & \textbf{1,1165} \\
 \bottomrule
 \end{tabular}
-\caption{Décroissance régulière de la perte de validation (extraits).}
 \end{table}
 
 \subsection{Augmentation par back-translation}
@@ -546,7 +546,7 @@ L'évaluation est conduite sur deux jeux, par direction :
         en$\leftrightarrow$ewe.
 \end{itemize}
 
-\subsection{Résultat principal : base vs LoRA sur FLORES-200}
+\subsection{Résultat principal : NLLB de base vs MiaGbe (LoRA) sur FLORES-200}
 La comparaison oppose le NLLB de base (adaptateur désactivé) à notre adaptateur LoRA, sur
 exactement les mêmes phrases. L'adaptateur \textbf{améliore les six directions}. Ces
 scores mesurent l'apport du fine-tuning (NLLB $\to$ LoRA) ; le modèle final y ajoute la
@@ -556,14 +556,14 @@ l'éwé — sa mesure sur FLORES reste une perspective.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{charts/flores.png}
-\caption{FLORES-200 \texttt{devtest} : NLLB de base vs MiaGbe (BLEU et chrF, 200 phrases par direction). Le fine-tuning améliore les six directions ; moyenne +1,24 BLEU et +1,64 chrF.}
+\caption{FLORES-200 \texttt{devtest} : NLLB de base vs MiaGbe (LoRA) (BLEU et chrF, 200 phrases par direction). Ces barres isolent l'apport du fine-tuning LoRA ; le modèle final y ajoute la back-translation (cf. figure suivante). Le fine-tuning améliore les six directions ; moyenne +1,24 BLEU et +1,64 chrF.}
 \end{figure}
 
 \subsection{Test interne}
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{charts/internal.png}
-\caption{Scores du modèle LoRA sur le test interne, issu de nos données (BLEU et chrF par direction ; avant back-translation). La back-translation relève encore les directions vers l'éwé.}
+\caption{Scores de MiaGbe (LoRA) sur le test interne, issu de nos données (BLEU et chrF par direction ; avant back-translation)}
 \end{figure}
 
 \subsection{Apport de la back-translation}
@@ -575,7 +575,7 @@ back-translation est donc \textbf{retenue pour le modèle final}.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{charts/bt.png}
-\caption{Apport de la back-translation : adaptateur LoRA seul vs LoRA + back-translation, sur le test interne (BLEU et chrF). Les directions vers l'éwé progressent nettement (EN→EWE +3,1 ; FR→EWE +1,4 BLEU), sans régression ailleurs.}
+\caption{Apport de la back-translation : MiaGbe (LoRA) vs MiaGbe (+ back-translation), sur le test interne (BLEU et chrF). Les directions vers l'éwé progressent nettement (EN→EWE +3,1 ; FR→EWE +1,4 BLEU), sans régression ailleurs.}
 \end{figure}
 
 \emph{Réserve} : ce gain est mesuré sur le test interne (optimiste) ; sa
