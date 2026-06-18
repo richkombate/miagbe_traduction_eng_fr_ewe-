@@ -189,7 +189,7 @@ API \textsc{FastAPI} et une interface web \textsc{React}.
 \begin{infobox}
 \textbf{Contribution principale.} Un traducteur trilingue opérationnel pour une langue
 peu dotée, accompagné d'une méthodologie de données rigoureuse (alignement, filtrage,
-contrôle du biais) et d'une évaluation honnête sur benchmark externe — démontrant un
+contrôle du biais) et d'une évaluation sur benchmark externe — démontrant un
 apport mesurable du fine-tuning tout en documentant ses limites.
 \end{infobox}
 
@@ -246,7 +246,7 @@ réponse recommandée par la littérature face au manque de données. Deuxièmem
 priorité donnée au \textbf{nettoyage et au filtrage} du corpus, car sur une langue peu
 dotée le bruit pèse davantage qu'un modèle plus gros. Troisièmement, une
 \textbf{évaluation sur benchmark externe} (FLORES-200) afin d'obtenir des chiffres
-comparables et honnêtes, et non flattés par la proximité au domaine d'entraînement.
+comparables et clairs, et non flattés par la proximité au domaine d'entraînement.
 
 % =====================================================================
 \section{Architecture générale}
@@ -542,7 +542,7 @@ L'évaluation est conduite sur deux jeux, par direction :
         l'entraînement. Utile, mais \textbf{optimiste}.
   \item \textbf{FLORES-200} (\code{devtest}) : jeu de référence multilingue de Meta,
         \textbf{jamais vu} à l'entraînement et aligné dans les trois langues. C'est la
-        mesure \textbf{honnête} et comparable à l'état de l'art, y compris pour
+        mesure \textbf{claire} et comparable à l'état de l'art, y compris pour
         en$\leftrightarrow$ewe.
 \end{itemize}
 
@@ -578,7 +578,7 @@ back-translation est donc \textbf{retenue pour le modèle final}.
 \caption{Apport de la back-translation : adaptateur LoRA seul vs LoRA + back-translation, sur le test interne (BLEU et chrF). Les directions vers l'éwé progressent nettement (EN→EWE +3,1 ; FR→EWE +1,4 BLEU), sans régression ailleurs.}
 \end{figure}
 
-\emph{Réserve d'honnêteté} : ce gain est mesuré sur le test interne (optimiste) ; sa
+\emph{Réserve} : ce gain est mesuré sur le test interne (optimiste) ; sa
 confirmation sur FLORES-200 reste une étape à mener.
 
 \subsection{Analyse}
@@ -689,7 +689,7 @@ livrables attendus.
 
 La principale marge de progrès demeure la génération vers l'éwé, contrainte par la
 disponibilité des données : un défi inhérent aux langues peu dotées, que ce travail
-documente, mesure honnêtement et adresse explicitement par sa méthodologie de données et
+documente, mesure et adresse explicitement par sa méthodologie de données et
 d'augmentation.
 
 \vfill
