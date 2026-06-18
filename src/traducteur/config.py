@@ -1,7 +1,6 @@
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# --- Identité du projet (travail de groupe universitaire) ---------------------
 GROUP_NAME = "GR02"
 GROUP_MEMBERS = [
     "AZIGLOSSOU Judith Gracia",

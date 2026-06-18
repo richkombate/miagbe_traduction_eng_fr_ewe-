@@ -1,14 +1,3 @@
-"""Synthèse vocale (TTS) — Français, Anglais et ÉWÉ.
-
-Cahier des charges (2.d) : « Synthèse vocale (TTS) : utiliser Coqui TTS ou Google
-TTS (si voix ewe disponible) ». Or ni Coqui ni Google ne fournissent de voix éwé.
-La seule voix éwé réellement disponible est **Meta MMS-TTS** (`facebook/mms-tts-ewe`),
-un modèle VITS servi par **Hugging Face Transformers** (librairie déjà recommandée
-par le sujet et déjà présente dans requirements.txt). On l'utilise donc pour les
-trois langues : aucune dépendance lourde supplémentaire, et ça tourne sur CPU.
-
-Renvoie un WAV (bytes) prêt à être lu par le navigateur.
-"""
 from __future__ import annotations
 
 import io

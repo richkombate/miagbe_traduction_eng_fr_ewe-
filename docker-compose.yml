@@ -1,8 +1,0 @@
-services:
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - TRANSLATION_BACKEND=fallback
-      - DEVICE=cpu

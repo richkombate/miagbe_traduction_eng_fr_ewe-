@@ -108,10 +108,6 @@ def transcribe(audio_bytes: bytes, lang: str = "fra") -> str:
 
 def warmup(lang: str = "fra") -> None:
     """Précharge le modèle et déclenche une inférence à blanc.
-
-    Appelé au démarrage du serveur pour éliminer le coût du démarrage à froid
-    (téléchargement + chargement + compilation des noyaux GPU) sur la première
-    vraie requête. Échoue silencieusement si le modèle n'est pas disponible.
     """
     import numpy as np
 

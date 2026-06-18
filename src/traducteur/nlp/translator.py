@@ -38,17 +38,6 @@ class FallbackTranslator:
 
 
 class NLLBTranslator:
-    """Wrapper NLLB-200 (réseau de neurones Transformer multilingue).
-
-    Le modèle est chargé paresseusement à la première traduction. Si l'adaptateur
-    LoRA fine-tuné sur l'éwé est fourni via ``adapter_path``, il est appliqué sur le
-    modèle de base ``facebook/nllb-200-distilled-600M``.
-
-    Robustesse : si le chargement ou la génération échoue (pas de GPU, mémoire
-    insuffisante, modèle absent...), le wrapper retombe automatiquement sur le
-    dictionnaire de démonstration au lieu de faire planter l'API. La traduction
-    reste alors disponible, accompagnée d'un avertissement explicite.
-    """
 
     def __init__(self, model_name: str, device: str = "cpu", adapter_path: str | None = None) -> None:
         self.model_name = model_name

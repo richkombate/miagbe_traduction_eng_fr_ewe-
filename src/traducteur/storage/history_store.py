@@ -1,15 +1,3 @@
-"""Persistance serveur de l'historique de traduction (SQLite).
-
-L'historique et les favoris sont stockés côté serveur, rattachés à l'identifiant
-du compte de l'utilisateur (``user_id``, le ``sub`` Google). Ainsi, l'historique
-suit l'utilisateur d'un navigateur ou d'une machine à l'autre, contrairement au
-stockage local du navigateur.
-
-On utilise le module standard ``sqlite3`` : aucune dépendance ni serveur de base
-de données externe n'est nécessaire. Une connexion est ouverte par opération, ce
-qui est sûr avec le serveur multi-thread d'Uvicorn.
-"""
-
 from __future__ import annotations
 
 import sqlite3
