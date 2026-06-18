@@ -133,23 +133,26 @@
 {\sffamily\large\color{greytxt} avec reconnaissance et synthèse vocales}
 \end{center}
 
-\vspace{0.6cm}
+\vspace{0.55cm}
 \begin{center}
-\fcolorbox{red}{white}{\sffamily\Large\bfseries\color{red}\;Rapport technique\;}
+\tcbox[colback=primary, colframe=red, arc=6pt, boxrule=0pt,
+       left=18pt, right=18pt, top=6pt, bottom=6pt, nobeforeafter]{%
+  \sffamily\Large\bfseries\color{white} RAPPORT TECHNIQUE}
 \end{center}
 
 \vfill
 \begin{center}
-{\sffamily\bfseries\color{primary}\large Réalisé par}\\[0.28cm]
-{\sffamily\bfseries\color{primarydark} Groupe GR02}\\[0.14cm]
-AZIGLOSSOU Judith Gracia\\
-NAPO NISSAO Rafia\\
-WOGLO Koffi Boris Gilbride\\
-PIO Sikirou Afeez Prince Cyrille\\
-KOMBATE Gountande\\[0.65cm]
-{\sffamily\bfseries\color{primary}\large Encadré par}\\[0.28cm]
-\textbf{Dr. Akouyo Yvette GBEDEVI}\\[0.06cm]
-
+{\sffamily\bfseries\color{primary}\large Réalisé par — Groupe GR02}\\[0.28cm]
+\begin{tcolorbox}[width=0.78\textwidth, colback=light, colframe=primary, arc=5pt, boxrule=0.7pt,
+                  left=12pt, right=12pt, top=10pt, bottom=10pt, halign=center]
+{\sffamily\setstretch{1.3}%
+AZIGLOSSOU Judith Gracia \quad\textbullet\quad NAPO NISSAO Rafia\\
+WOGLO Koffi Boris Gilbride \quad\textbullet\quad PIO Sikirou Afeez Prince Cyrille\\
+KOMBATE Gountande\par}
+\end{tcolorbox}
+\vspace{0.4cm}
+{\sffamily\bfseries\color{primary}\large Encadré par}\\[0.18cm]
+{\sffamily\bfseries\color{primarydark} Dr. Akouyo Yvette GBEDEVI}{\sffamily\color{greytxt} }
 \end{center}
 
 \vfill
@@ -194,7 +197,8 @@ apport mesurable du fine-tuning tout en documentant ses limites.
 % --------------------------- SOMMAIRE (page dédiée) ------------------
 {\hypersetup{linkcolor=primarydark}
  \renewcommand{\contentsname}{\sffamily\color{primarydark}Sommaire}
- \tableofcontents}
+ \setcounter{tocdepth}{2}
+ \begingroup\setstretch{1.0}\tableofcontents\endgroup}
 \thispagestyle{fancy}
 \clearpage
 
